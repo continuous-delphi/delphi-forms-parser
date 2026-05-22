@@ -4,7 +4,13 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 
 
-### 0.1.8 - Unreleased
+### 0.1.9 - Unreleased
+
+- Add FMX golden test file (fmx_form.fmx) with FMX-specific float coordinates,
+  nested layouts, and opacity. Round-trip and structural tests verify .fmx support.
+[#14](https://github.com/continuous-delphi/delphi-forms-parser/issues/14)
+
+### 0.1.8
 
 - Add TDelphiFormsParser facade with ParseFile/ParseText/ParseBinary/WriteText/
   WriteBinary/BinaryToText/TextToBinary/DetectFormat. Golden test suite with 6

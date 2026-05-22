@@ -39,6 +39,10 @@ type
     procedure Golden_Nested_Structure;
     [Test]
     procedure Golden_AllValues_Structure;
+    [Test]
+    procedure Golden_FmxForm;
+    [Test]
+    procedure Golden_FmxForm_Structure;
   end;
 
 implementation
@@ -163,6 +167,40 @@ begin
     Assert.AreEqual(fvInteger, F.Root.Properties[16].Value.Kind, 'NegativeTop should be integer');
     Assert.AreEqual(NativeInt(1), F.Root.Children.Count);
     Assert.AreEqual('Memo1', F.Root.Children[0].Name);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TGoldenTests.Golden_FmxForm;
+begin
+  AssertTextRoundTrip('fmx_form.fmx');
+end;
+
+procedure TGoldenTests.Golden_FmxForm_Structure;
+var
+  F: TFormFile;
+begin
+  F := TDelphiFormsParser.ParseFile(GoldenPath('fmx_form.fmx'));
+  try
+    Assert.AreEqual('frmFmxDemo', F.Root.Name);
+    Assert.AreEqual('TfrmFmxDemo', F.Root.ClassName_);
+    Assert.AreEqual(NativeInt(1), F.Root.Children.Count);
+    Assert.AreEqual('Layout1', F.Root.Children[0].Name);
+    Assert.AreEqual('TLayout', F.Root.Children[0].ClassName_);
+    Assert.AreEqual(NativeInt(3), F.Root.Children[0].Children.Count);
+    Assert.AreEqual('Button1', F.Root.Children[0].Children[0].Name);
+    Assert.AreEqual('Label1', F.Root.Children[0].Children[1].Name);
+    Assert.AreEqual('Rectangle1', F.Root.Children[0].Children[2].Name);
+    // Verify FMX float properties parsed correctly
+    Assert.AreEqual(fvFloat, F.Root.Properties[3].Value.Kind, 'ClientHeight should be float');
+    Assert.AreEqual(fvFloat, F.Root.Properties[4].Value.Kind, 'ClientWidth should be float');
+    // Verify FMX-specific dotted float properties
+    Assert.AreEqual('Position.X', F.Root.Children[0].Children[0].Properties[0].Name);
+    Assert.AreEqual(fvFloat, F.Root.Children[0].Children[0].Properties[0].Value.Kind, 'Position.X should be float');
+    // Verify Opacity float
+    Assert.AreEqual('Opacity', F.Root.Children[0].Children[2].Properties[7].Name);
+    Assert.AreEqual(fvFloat, F.Root.Children[0].Children[2].Properties[7].Value.Kind, 'Opacity should be float');
   finally
     F.Free;
   end;

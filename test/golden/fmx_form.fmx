@@ -1,0 +1,46 @@
+object frmFmxDemo: TfrmFmxDemo
+  Left = 0
+  Top = 0
+  Caption = 'FMX Demo Form'
+  ClientHeight = 480.000000000000000000
+  ClientWidth = 640.000000000000000000
+  FormFactor.Width = 320
+  FormFactor.Height = 480
+  FormFactor.Devices = [Desktop]
+  object Layout1: TLayout
+    Align = Client
+    Size.Width = 640.000000000000000000
+    Size.Height = 480.000000000000000000
+    Size.PlatformDefault = False
+    object Button1: TButton
+      Position.X = 16.000000000000000000
+      Position.Y = 16.000000000000000000
+      Size.Width = 120.000000000000000000
+      Size.Height = 40.000000000000000000
+      Size.PlatformDefault = False
+      Text = 'Click Me'
+      OnClick = Button1Click
+    end
+    object Label1: TLabel
+      Position.X = 16.000000000000000000
+      Position.Y = 72.000000000000000000
+      Size.Width = 200.000000000000000000
+      Size.Height = 22.000000000000000000
+      Size.PlatformDefault = False
+      Text = 'Hello from FMX'
+      object TextSettings: TTextSettings
+        HorzAlign = Leading
+      end
+    end
+    object Rectangle1: TRectangle
+      Position.X = 16.000000000000000000
+      Position.Y = 110.000000000000000000
+      Size.Width = 200.000000000000000000
+      Size.Height = 100.000000000000000000
+      Size.PlatformDefault = False
+      Fill.Color = $FFFF0000
+      Stroke.Color = $FF000000
+      Opacity = 0.750000000000000000
+    end
+  end
+end

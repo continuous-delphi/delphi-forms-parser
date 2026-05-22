@@ -254,3 +254,169 @@ golden test suite with cross-format validation.
 - [ ] All tests pass with zero memory leaks
 - [ ] Golden file round-trips verified
 - [ ] Cross-format conversion produces stable output
+
+---
+Title: TreeDump utility -- CLI tool for inspecting DFM/FMX component trees
+Issue: #10
+Status: closed
+Labels: enhancement
+Body:
+Implement the TreeDump console utility that reads a .dfm/.fmx form file,
+auto-detects text or binary format, parses it into a TFormFile AST, and
+writes an indented text representation of the component tree with property
+values and type annotations.
+
+Modeled after `DelphiParser.TreeDump` in delphi-parser but tailored to the
+simpler DFM form AST.
+
+## Deliverables
+
+- [ ] `projects/TreeDump/Delphi.Forms.TreeDump.Main.pas` -- `TTreeDump.Run`
+  with CLI option parsing, tree rendering, and optional round-trip check
+- [ ] Updated `projects/TreeDump/Delphi.Forms.TreeDump.dpr` -- wired to Main
+
+## Features
+
+- Auto-detect text vs binary format
+- Indented tree output: `object Name: ClassName` / properties / `end`
+- Property values with type annotations: `Left = 0 [fvInteger]`
+- `--no-values` to show only property names and types
+- `--round-trip` to verify text parse-write fidelity
+- `-?`/`--help` and `-v`/`--version`
+- Exit codes: 0=success, 1=bad params, 2=parse error, 3=round-trip failed
+
+## Acceptance criteria
+
+- [ ] Builds with 0 warnings, 0 errors
+- [ ] Produces correct output on golden .dfm files
+- [ ] `--round-trip` passes on all golden text files
+
+---
+Title: Support typed collection items (item ClassName ... end)
+Issue: #11
+Labels: bug
+Body:
+The text parser only handles bare `item ... end` inside collection values.
+DFM files can also have typed collection items: `item ClassName ... end`
+(e.g. TToolButton, TListColumn with explicit class name). The parser
+currently ignores the class name, which silently drops data and breaks
+round-trip for forms using typed collections.
+
+The binary reader has a similar gap -- collection items in binary format
+can carry a class name that is not currently stored.
+
+## Scope
+
+- [ ] Update `TDfmParser.ParseCollectionValue` to detect and store the
+  optional class name on collection items (store in `TFormObject.ClassName_`)
+- [ ] Update `TDfmTextWriter.WriteCollectionValue` to emit the class name
+  when present
+- [ ] Update `TDfmBinaryReader` collection handling if class names appear
+  in binary format
+- [ ] Update `TDfmBinaryWriter` collection handling to write class names
+- [ ] Add test cases for typed collection items in both text and binary paths
+- [ ] Add a golden .dfm file with typed collection items
+
+## Acceptance criteria
+
+- [ ] `item TToolButton ... end` parses with ClassName_ = 'TToolButton'
+- [ ] Round-trip passes for forms with typed collection items
+- [ ] All existing tests still pass
+
+---
+Title: Preserve original binary value type tags for true binary round-trip
+Issue: #12
+Labels: enhancement
+Body:
+The binary writer always uses `vaDouble` for floats and `vaUTF8String` for
+strings regardless of the original encoding. This means a binary
+read->write cycle changes the byte representation when the original used
+`vaExtended` (10-byte), `vaSingle`, `vaCurrency`, `vaDate`, `vaString`,
+`vaLString`, `vaWString`, or `vaUString`.
+
+Design invariant #2 ("binary round-trip: read -> AST -> write == original")
+is not fully met for files using these value types.
+
+## Approach
+
+- [ ] Add an `OriginalValueType: Byte` field to `TFormValue` (0 = not set)
+- [ ] `TDfmBinaryReader` stores the original value type tag when reading
+- [ ] `TDfmBinaryWriter` uses `OriginalValueType` when set, falls back to
+  current heuristic (smallest int, vaDouble, vaUTF8String) when not set
+- [ ] For vaExtended: store the raw 10 bytes in a `TBytes` field so Win64
+  can write them back without precision loss
+- [ ] Add binary round-trip tests with vaExtended, vaSingle, vaCurrency,
+  vaString, vaLString, vaWString, vaUString inputs
+
+## Acceptance criteria
+
+- [ ] Binary read -> write produces byte-identical output for all value types
+- [ ] Programmatically constructed ASTs (no OriginalValueType) still work
+- [ ] All existing tests still pass
+
+---
+Title: Add edge-case golden files -- empty form, deep nesting, large binary
+Issue: #13
+Labels: testing
+Body:
+The plan verification section calls for edge-case coverage that does not
+yet exist in the golden test suite.
+
+## Deliverables
+
+- [ ] `test/golden/empty.dfm` -- form with no properties and no children
+- [ ] `test/golden/deep_nesting.dfm` -- 10+ levels of nested objects
+- [ ] `test/golden/large_binary.dfm` -- form with a large binary data blob
+  (1000+ hex bytes spanning many lines)
+- [ ] Tests in `Test.Delphi.Forms.Golden.pas` for each new golden file
+  verifying round-trip and AST structure
+
+## Acceptance criteria
+
+- [ ] All new golden files parse and round-trip successfully
+- [ ] Deep nesting test verifies correct depth traversal
+- [ ] Large binary test verifies hex data integrity
+
+---
+Title: Add .fmx golden test file
+Issue: #14
+Status: closed
+Labels: testing
+Body:
+All golden test files are .dfm. While .fmx uses the identical text format,
+having at least one .fmx file in the test suite confirms that the parser
+handles FMX forms and documents the claim in the README.
+
+## Deliverables
+
+- [ ] `test/golden/fmx_form.fmx` -- a representative FMX form with
+  FMX-specific properties (float coordinates, platform properties)
+- [ ] Golden test in `Test.Delphi.Forms.Golden.pas` verifying round-trip
+- [ ] Structural test verifying FMX-specific property values (floats)
+
+## Acceptance criteria
+
+- [ ] .fmx file parses and round-trips successfully
+- [ ] Float property values preserved correctly
+
+---
+Title: Update plan.md directory structure to match actual project
+Issue: #15
+Status: closed
+Labels: documentation
+Body:
+The directory structure section in `plan.md` is missing files that were
+added during implementation:
+
+- `Test.Delphi.Forms.Smoke.pas` (added by user in Phase 1)
+- `Test.Delphi.Forms.Types.pas` (added in Phase 2)
+- `projects/TreeDump/Delphi.Forms.TreeDump.Main.pas` (added post-plan)
+- `CLAUDE.md` (added post-plan)
+
+## Deliverables
+
+- [ ] Update `plan.md` directory structure to reflect actual file list
+
+## Acceptance criteria
+
+- [ ] Directory structure in plan.md matches reality
