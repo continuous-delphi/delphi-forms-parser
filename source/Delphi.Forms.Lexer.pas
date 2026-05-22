@@ -398,7 +398,7 @@ begin
         StartLine := FLine;
         StartCol := FCol;
         Advance;
-        Result.Add(MakeToken(dtkIdentifier, Copy(FSource, FPos - 1, 1), StartOffset, StartLine, StartCol));
+        Result.Add(MakeToken(dtkIdentifier, Copy(FSource, StartOffset + 1, 1), StartOffset, StartLine, StartCol));
       end;
     end;
     Result.Add(MakeToken(dtkEOF, '', FLen, FLine, FCol));

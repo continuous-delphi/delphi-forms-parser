@@ -423,3 +423,163 @@ added during implementation:
 ## Acceptance criteria
 
 - [ ] Directory structure in plan.md matches reality
+
+---
+Title: Lexer emits wrong character for unknown-char token
+Issue: #16
+Status: closed
+Labels: bug
+Body:
+In `Delphi.Forms.Lexer.pas` line 401, the unknown-character fallback reads
+the wrong character from the source. After `Advance` moves `FPos` forward,
+`Copy(FSource, FPos - 1, 1)` reads the character at the NEW position, not
+the original one.
+
+```pascal
+// Current (broken):
+StartOffset := FPos - 1;
+Advance;
+Result.Add(MakeToken(dtkIdentifier, Copy(FSource, FPos - 1, 1), ...));
+
+// Should be:
+StartOffset := FPos - 1;
+Advance;
+Result.Add(MakeToken(dtkIdentifier, Copy(FSource, StartOffset + 1, 1), ...));
+```
+
+This breaks round-trip fidelity for any DFM file containing unrecognized
+characters (e.g. stray `@`, `!`, `\`, `~`).
+
+## Acceptance criteria
+
+- [ ] Unknown character token text matches the actual character
+- [ ] Round-trip test with unrecognized characters passes
+- [ ] Add lexer test for unknown character handling
+
+---
+Title: Parser crashes on truncated input -- missing AtEnd guard in Expect
+Issue: #17
+Labels: bug
+Body:
+In `Delphi.Forms.Parser.pas` line 78, `Expect()` calls `CurrentKind`
+without checking `AtEnd` first. If the token stream is exhausted (e.g.
+truncated DFM file missing `end`), `FTokens[FPos]` raises an
+index-out-of-bounds exception instead of a clear parse error.
+
+```pascal
+// Current (crashes):
+procedure TDfmParser.Expect(Kind: TDfmTokenKind);
+begin
+  if CurrentKind <> Kind then  // <-- crashes if FPos >= FTokens.Count
+    raise Exception.CreateFmt(...);
+  Advance;
+end;
+```
+
+Same issue exists in `Current()`, `CurrentKind()`, and `CurrentText()` --
+none guard against `FPos >= FTokens.Count`.
+
+## Scope
+
+- [ ] Add AtEnd guard to `Expect` -- raise descriptive error instead of AV
+- [ ] Consider adding guard to `Current`/`CurrentKind`/`CurrentText` or
+  document that callers must check `AtEnd` first
+- [ ] Add parser test for truncated input (missing `end`, missing property
+  value, etc.)
+
+## Acceptance criteria
+
+- [ ] Truncated DFM raises a descriptive exception, not an access violation
+- [ ] All existing tests still pass
+
+---
+Title: Binary collection item index discarded -- non-sequential indices lost
+Issue: #18
+Labels: bug
+Body:
+In `Delphi.Forms.BinaryReader.pas` line 475, the collection item index
+value is read and immediately freed:
+
+```pascal
+ReadValue.Free; // skip the item index
+```
+
+The writer always writes sequential indices (0, 1, 2...) via
+`WriteIntegerValue(I)` in `Delphi.Forms.BinaryWriter.pas` line 306.
+
+If the original binary DFM had non-sequential item indices (e.g. after
+items were reordered or deleted in the IDE), the indices are lost and
+binary round-trip produces different bytes.
+
+## Scope
+
+- [ ] Preserve the item index value on `TFormObject` (add an `ItemIndex`
+  field or store via an existing mechanism)
+- [ ] Writer uses preserved index when available, falls back to sequential
+- [ ] Add binary round-trip test with non-sequential item indices
+
+## Acceptance criteria
+
+- [ ] Binary read -> write preserves original item indices
+- [ ] Programmatically constructed collections still get sequential indices
+
+---
+Title: Binary extended float fallback writes incorrect 80-bit layout
+Issue: #19
+Labels: bug
+Body:
+In `Delphi.Forms.BinaryWriter.pas` lines 216-221, the fallback path for
+vaExtended when `ExtendedRawBytes` is not set writes 8 bytes of Double
+followed by 2 zero bytes:
+
+```pascal
+D := Value.FloatValue;
+FStream.WriteBuffer(D, 8);
+WriteByte(0);
+WriteByte(0);
+```
+
+This produces 10 bytes but not a valid 80-bit extended float layout. The
+80-bit format has a different exponent bias and explicit integer bit. A
+reader interpreting these 10 bytes as Extended will get a wrong value.
+
+This path is only reachable for programmatically constructed ASTs with
+`OriginalValueType = vaExtended` but `ExtendedRawBytes` not set -- an
+unlikely scenario, but incorrect if reached.
+
+## Scope
+
+- [ ] Either properly convert Double to 80-bit extended layout, or raise
+  an exception if ExtendedRawBytes is required but missing
+
+## Acceptance criteria
+
+- [ ] The fallback path either produces a valid 80-bit float or fails clearly
+
+---
+Title: Add tests for malformed and edge-case input
+Issue: #20
+Labels: testing
+Body:
+The code review identified several untested input scenarios that could
+cause crashes or incorrect behavior.
+
+## Test gaps
+
+- [ ] **Lexer: unknown characters** -- tokenize input with `@`, `!`, `\`,
+  `~` and verify round-trip
+- [ ] **Parser: truncated input** -- missing `end`, missing property value,
+  empty string, object without class name
+- [ ] **Parser: empty input** -- verify graceful handling of empty string
+- [ ] **Binary reader: truncated stream** -- binary data cut short mid-object
+  or mid-property
+- [ ] **Binary reader: invalid signature** -- data that is not TPF0
+- [ ] **Binary reader: unknown value type tag** -- byte value > 22
+- [ ] **Parser: incomplete hex data** -- `{0A5}` with odd hex char count
+- [ ] **Parser: char literal overflow** -- `#99999` exceeding valid range
+
+## Acceptance criteria
+
+- [ ] Each test case either produces correct output or raises a clear exception
+- [ ] No access violations or unhandled crashes
+- [ ] All existing tests still pass

@@ -81,6 +81,10 @@ type
     procedure RoundTrip_DesignSize;
     [Test]
     procedure AlwaysEndsWithEOF;
+    [Test]
+    procedure UnknownChar_EmitsCorrectText;
+    [Test]
+    procedure UnknownChar_RoundTrip;
   end;
 
 implementation
@@ -516,6 +520,28 @@ begin
   finally
     Tokens.Free;
   end;
+end;
+
+procedure TDfmLexerTests.UnknownChar_EmitsCorrectText;
+var
+  Tokens: TDfmTokenList;
+begin
+  Tokens := Tok('@');
+  try
+    Assert.AreEqual(NativeInt(2), Tokens.Count); // unknown + EOF
+    Assert.AreEqual(dtkIdentifier, Tokens[0].Kind);
+    Assert.AreEqual('@', Tokens[0].Text, 'Token text should be the unknown char');
+    Assert.AreEqual(0, Tokens[0].StartOffset);
+  finally
+    Tokens.Free;
+  end;
+end;
+
+procedure TDfmLexerTests.UnknownChar_RoundTrip;
+begin
+  AssertRoundTrip('abc @!~ def');
+  AssertRoundTrip('@');
+  AssertRoundTrip('Left = 0' + #13#10 + '~end');
 end;
 
 initialization

@@ -4,6 +4,12 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 
 
+### 0.2.14
+
+- Fix lexer unknown-character token emitting wrong character. Round-trip now
+  correct for DFM files containing `@`, `!`, `\`, `~`, or other unrecognized chars.
+[#16](https://github.com/continuous-delphi/delphi-forms-parser/issues/16)
+
 ### 0.2.13
 
 - Support typed collection items (`item ClassName ... end`). Parser detects
