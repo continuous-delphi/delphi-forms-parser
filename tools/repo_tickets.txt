@@ -196,3 +196,33 @@ legacy Delphi systems that store forms in binary format.
 - [ ] All binary reader tests pass with zero memory leaks
 - [ ] Reads binary DFM into correct AST structure
 - [ ] Handles all value type tags
+
+---
+Title: Binary DFM writer -- serialize AST to TPF0 format
+Issue: #8
+Status: closed
+Labels: enhancement
+Body:
+Implement a binary DFM writer that serializes TFormFile AST back to TPF0
+binary format. Enables binary round-trip (read -> AST -> write == original)
+and text-to-binary conversion for tooling workflows.
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.BinaryWriter.pas` -- `TDfmBinaryWriter` with
+  `WriteToBytes`, `WriteToStream`, `WriteToFile` methods
+- [ ] `test/Test.Delphi.Forms.BinaryWriter.pas` -- binary writer tests
+  including round-trip verification (read binary -> AST -> write == original)
+
+## Design
+
+- Choose smallest integer type tag that fits the value (vaInt8/16/32/64)
+- Strings written as vaUTF8String (modern default)
+- Signature: $FF + TPF0
+- Object kind flags encoded in class name length byte ($10=inherited, $20=inline)
+
+## Acceptance criteria
+
+- [ ] 0 warnings, 0 errors
+- [ ] All binary writer tests pass with zero memory leaks
+- [ ] Binary round-trip verified on hand-crafted payloads

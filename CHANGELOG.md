@@ -4,7 +4,14 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 
 
-### 0.1.6 - Unreleased
+### 0.1.7 - Unreleased
+
+- Add binary DFM writer (TPF0 format); chooses smallest integer type tag,
+  writes strings as vaUTF8String, encodes object kind flags in class name
+  byte. Binary round-trip verified. 16 binary writer tests.
+[#8](https://github.com/continuous-delphi/delphi-forms-parser/issues/8)
+
+### 0.1.6
 
 - Add binary DFM reader (TPF0 format); handles all value type tags including
   vaInt8-vaInt64, vaExtended (80-bit), vaString/vaLString/vaWString/vaUTF8String/
