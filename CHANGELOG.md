@@ -4,7 +4,13 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 
 
-### 0.1.9 - Unreleased
+### 0.1.10 - Unreleased
+
+- Add edge-case golden files: empty form (0 properties, 0 children), deep nesting
+  (12 levels), and large binary data (1024 bytes / 32 hex lines). 6 new tests.
+[#13](https://github.com/continuous-delphi/delphi-forms-parser/issues/13)
+
+### 0.1.9
 
 - Add FMX golden test file (fmx_form.fmx) with FMX-specific float coordinates,
   nested layouts, and opacity. Round-trip and structural tests verify .fmx support.

@@ -43,6 +43,18 @@ type
     procedure Golden_FmxForm;
     [Test]
     procedure Golden_FmxForm_Structure;
+    [Test]
+    procedure Golden_Empty;
+    [Test]
+    procedure Golden_Empty_Structure;
+    [Test]
+    procedure Golden_DeepNesting;
+    [Test]
+    procedure Golden_DeepNesting_Structure;
+    [Test]
+    procedure Golden_LargeBinary;
+    [Test]
+    procedure Golden_LargeBinary_Structure;
   end;
 
 implementation
@@ -201,6 +213,83 @@ begin
     // Verify Opacity float
     Assert.AreEqual('Opacity', F.Root.Children[0].Children[2].Properties[7].Name);
     Assert.AreEqual(fvFloat, F.Root.Children[0].Children[2].Properties[7].Value.Kind, 'Opacity should be float');
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TGoldenTests.Golden_Empty;
+begin
+  AssertTextRoundTrip('empty.dfm');
+end;
+
+procedure TGoldenTests.Golden_Empty_Structure;
+var
+  F: TFormFile;
+begin
+  F := TDelphiFormsParser.ParseFile(GoldenPath('empty.dfm'));
+  try
+    Assert.IsNotNull(F.Root);
+    Assert.AreEqual('frmEmpty', F.Root.Name);
+    Assert.AreEqual('TfrmEmpty', F.Root.ClassName_);
+    Assert.AreEqual(NativeInt(0), F.Root.Properties.Count);
+    Assert.AreEqual(NativeInt(0), F.Root.Children.Count);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TGoldenTests.Golden_DeepNesting;
+begin
+  AssertTextRoundTrip('deep_nesting.dfm');
+end;
+
+procedure TGoldenTests.Golden_DeepNesting_Structure;
+var
+  F: TFormFile;
+  Node: TFormObject;
+  Depth: Integer;
+begin
+  F := TDelphiFormsParser.ParseFile(GoldenPath('deep_nesting.dfm'));
+  try
+    Assert.AreEqual('frmDeep', F.Root.Name);
+    // Walk down 12 levels: root -> Level1..Level11 -> Leaf
+    Node := F.Root;
+    Depth := 0;
+    while Node.Children.Count > 0 do
+    begin
+      Node := Node.Children[0];
+      Inc(Depth);
+    end;
+    Assert.AreEqual(12, Depth, 'Should reach 12 levels deep (11 panels + 1 button)');
+    Assert.AreEqual('Leaf', Node.Name);
+    Assert.AreEqual('TButton', Node.ClassName_);
+    Assert.AreEqual('Deepest', Node.Properties[0].Value.StringValue);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TGoldenTests.Golden_LargeBinary;
+begin
+  AssertTextRoundTrip('large_binary.dfm');
+end;
+
+procedure TGoldenTests.Golden_LargeBinary_Structure;
+var
+  F: TFormFile;
+begin
+  F := TDelphiFormsParser.ParseFile(GoldenPath('large_binary.dfm'));
+  try
+    Assert.AreEqual('frmLargeBinary', F.Root.Name);
+    Assert.AreEqual(NativeInt(1), F.Root.Children.Count);
+    Assert.AreEqual('Image1', F.Root.Children[0].Name);
+    // Picture.Data should be binary with 1024 bytes
+    Assert.AreEqual(fvBinary, F.Root.Children[0].Properties[2].Value.Kind);
+    Assert.AreEqual(NativeInt(1024), NativeInt(Length(F.Root.Children[0].Properties[2].Value.BinaryData)), 'Binary data should be 1024 bytes');
+    // Verify first and last bytes from the known seed
+    Assert.AreEqual(Byte($A2), F.Root.Children[0].Properties[2].Value.BinaryData[0], 'First byte');
+    Assert.AreEqual(Byte($11), F.Root.Children[0].Properties[2].Value.BinaryData[1023], 'Last byte');
   finally
     F.Free;
   end;

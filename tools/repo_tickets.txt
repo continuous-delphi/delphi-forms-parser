@@ -357,6 +357,7 @@ is not fully met for files using these value types.
 ---
 Title: Add edge-case golden files -- empty form, deep nesting, large binary
 Issue: #13
+Status: closed
 Labels: testing
 Body:
 The plan verification section calls for edge-case coverage that does not

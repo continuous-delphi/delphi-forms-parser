@@ -1,0 +1,2 @@
+object frmEmpty: TfrmEmpty
+end
