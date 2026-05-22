@@ -496,6 +496,7 @@ none guard against `FPos >= FTokens.Count`.
 ---
 Title: Binary collection item index discarded -- non-sequential indices lost
 Issue: #18
+Status: closed
 Labels: bug
 Body:
 In `Delphi.Forms.BinaryReader.pas` line 475, the collection item index

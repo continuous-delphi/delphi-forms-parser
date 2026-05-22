@@ -472,7 +472,13 @@ begin
           CollItem := TFormObject.Create;
           try
             // Collection items: read item index (vaInt* value), then properties
-            ReadValue.Free; // skip the item index
+            var IdxVal := ReadValue;
+            try
+              if IdxVal.Kind = fvInteger then
+                CollItem.ItemIndex := IdxVal.IntValue;
+            finally
+              IdxVal.Free;
+            end;
             // Read properties until zero-length name
             while True do
             begin

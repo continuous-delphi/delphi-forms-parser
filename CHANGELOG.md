@@ -4,6 +4,13 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 
 
+### 0.2.16
+
+- Preserve binary collection item indices for round-trip. Reader stores
+  index in TFormObject.ItemIndex; writer uses preserved value when set,
+  falls back to sequential (0,1,2...) for programmatically constructed ASTs.
+[#18](https://github.com/continuous-delphi/delphi-forms-parser/issues/18)
+
 ### 0.2.15
 
 - Add bounds guards to parser accessors (Current, CurrentKind, CurrentText,

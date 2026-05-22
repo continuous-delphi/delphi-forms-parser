@@ -302,8 +302,11 @@ begin
       for I := 0 to Value.CollectionItems.Count - 1 do
       begin
         CollItem := Value.CollectionItems[I];
-        // Write item index as vaInt32(0) -- Delphi uses sequential indices
-        WriteIntegerValue(I);
+        // Write item index: use preserved value if set, otherwise sequential
+        if CollItem.ItemIndex >= 0 then
+          WriteIntegerValue(CollItem.ItemIndex)
+        else
+          WriteIntegerValue(I);
         // Write item properties
         for var J := 0 to CollItem.Properties.Count - 1 do
           WriteProperty(CollItem.Properties[J]);

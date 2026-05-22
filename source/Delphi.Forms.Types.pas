@@ -63,6 +63,7 @@ type
     ObjectKind: TObjectKind;
     Name: string;
     ClassName_: string;
+    ItemIndex: Int64;
     Properties: TFormPropertyList;
     Children: TFormObjectList;
     constructor Create;
@@ -119,6 +120,7 @@ end;
 constructor TFormObject.Create;
 begin
   inherited Create;
+  ItemIndex := -1;
   Properties := TFormPropertyList.Create;
   Children := TFormObjectList.Create;
 end;

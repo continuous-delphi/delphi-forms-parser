@@ -74,6 +74,10 @@ type
     procedure RoundTrip_PreservesUStringTag;
     [Test]
     procedure RoundTrip_PreservesExtendedTag;
+    [Test]
+    procedure RoundTrip_PreservesCollectionItemIndex;
+    [Test]
+    procedure Write_SequentialIndicesWhenNotSet;
   end;
 
 implementation
@@ -740,6 +744,76 @@ begin
   AppendByte(Data, 2); AppendByte(Data, 0); AppendByte(Data, 0); AppendByte(Data, 0);
   AppendBytes(Data, WBuf);
   AssertBinaryBytesRoundTrip(BuildBinaryWithPropValue('Text', Data), FReader, FWriter);
+end;
+
+procedure TDfmBinaryWriterTests.RoundTrip_PreservesCollectionItemIndex;
+var
+  Data: TBytes;
+  ValBytes: TBytes;
+begin
+  // Build a collection with non-sequential indices (5, 10)
+  ValBytes := nil;
+  AppendByte(ValBytes, vaCollection);
+  // Item with index 5
+  AppendByte(ValBytes, vaInt8); AppendByte(ValBytes, 5); // index = 5
+  AppendShortString(ValBytes, 'Caption');
+  AppendByte(ValBytes, vaString); AppendShortString(ValBytes, 'A');
+  AppendByte(ValBytes, 0); // end item props
+  // Item with index 10
+  AppendByte(ValBytes, vaInt8); AppendByte(ValBytes, 10); // index = 10
+  AppendShortString(ValBytes, 'Caption');
+  AppendByte(ValBytes, vaString); AppendShortString(ValBytes, 'B');
+  AppendByte(ValBytes, 0); // end item props
+  AppendByte(ValBytes, 0); // end collection
+
+  Data := BuildBinaryWithPropValue('Items', ValBytes);
+  // Read -> verify indices preserved -> write -> verify bytes match
+  var F := FReader.ReadFromBytes(Data);
+  try
+    Assert.AreEqual(Int64(5), F.Root.Properties[0].Value.CollectionItems[0].ItemIndex, 'First item index');
+    Assert.AreEqual(Int64(10), F.Root.Properties[0].Value.CollectionItems[1].ItemIndex, 'Second item index');
+    AssertBinaryBytesRoundTrip(Data, FReader, FWriter);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmBinaryWriterTests.Write_SequentialIndicesWhenNotSet;
+var
+  F: TFormFile;
+  V: TFormValue;
+  Item: TFormObject;
+  Bytes: TBytes;
+  F2: TFormFile;
+begin
+  // Programmatically constructed collection -- ItemIndex defaults to -1
+  F := TFormFile.Create;
+  try
+    F.Root := TFormObject.Create;
+    F.Root.Name := 'f';
+    F.Root.ClassName_ := 'TF';
+    V := TFormValue.Create(fvCollection);
+    Item := TFormObject.Create;
+    Item.Properties.Add(TFormProperty.Create('A', TFormValue.Create(fvString)));
+    Item.Properties[0].Value.StringValue := 'X';
+    V.CollectionItems.Add(Item);
+    Item := TFormObject.Create;
+    Item.Properties.Add(TFormProperty.Create('A', TFormValue.Create(fvString)));
+    Item.Properties[0].Value.StringValue := 'Y';
+    V.CollectionItems.Add(Item);
+    F.Root.Properties.Add(TFormProperty.Create('Items', V));
+    Bytes := FWriter.WriteToBytes(F);
+  finally
+    F.Free;
+  end;
+  // Read back and verify sequential indices 0, 1
+  F2 := FReader.ReadFromBytes(Bytes);
+  try
+    Assert.AreEqual(Int64(0), F2.Root.Properties[0].Value.CollectionItems[0].ItemIndex);
+    Assert.AreEqual(Int64(1), F2.Root.Properties[0].Value.CollectionItems[1].ItemIndex);
+  finally
+    F2.Free;
+  end;
 end;
 
 procedure TDfmBinaryWriterTests.RoundTrip_PreservesExtendedTag;
