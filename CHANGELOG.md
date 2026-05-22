@@ -4,7 +4,15 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 
 
-### 0.1.7 - Unreleased
+### 0.1.8 - Unreleased
+
+- Add TDelphiFormsParser facade with ParseFile/ParseText/ParseBinary/WriteText/
+  WriteBinary/BinaryToText/TextToBinary/DetectFormat. Golden test suite with 6
+  .dfm files and 9 golden tests. Cross-format round-trip tests (11 tests).
+  Total: 151 tests, 0 leaks.
+[#9](https://github.com/continuous-delphi/delphi-forms-parser/issues/9)
+
+### 0.1.7
 
 - Add binary DFM writer (TPF0 format); chooses smallest integer type tag,
   writes strings as vaUTF8String, encodes object kind flags in class name

@@ -226,3 +226,31 @@ and text-to-binary conversion for tooling workflows.
 - [ ] 0 warnings, 0 errors
 - [ ] All binary writer tests pass with zero memory leaks
 - [ ] Binary round-trip verified on hand-crafted payloads
+
+---
+Title: Facade API and golden test suite
+Issue: #9
+Status: closed
+Labels: enhancement
+Body:
+Add the high-level `TDelphiFormsParser` facade class and comprehensive
+golden test suite with cross-format validation.
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.pas` -- facade with `ParseFile`, `ParseText`,
+  `ParseBinary`, `WriteText`, `WriteBinary`, `BinaryToText`, `TextToBinary`,
+  `DetectFormat`
+- [ ] `test/Test.Delphi.Forms.Golden.pas` -- golden file tests for text
+  round-trip using real .dfm files
+- [ ] `test/golden/` -- golden .dfm test files covering all value types,
+  nesting, inherited/inline forms
+- [ ] `test/Test.Delphi.Forms.RoundTrip.pas` -- cross-format validation
+  (text -> binary -> text stability)
+
+## Acceptance criteria
+
+- [ ] 0 warnings, 0 errors
+- [ ] All tests pass with zero memory leaks
+- [ ] Golden file round-trips verified
+- [ ] Cross-format conversion produces stable output
