@@ -55,6 +55,10 @@ type
     procedure Golden_LargeBinary;
     [Test]
     procedure Golden_LargeBinary_Structure;
+    [Test]
+    procedure Golden_TypedCollections;
+    [Test]
+    procedure Golden_TypedCollections_Structure;
   end;
 
 implementation
@@ -290,6 +294,36 @@ begin
     // Verify first and last bytes from the known seed
     Assert.AreEqual(Byte($A2), F.Root.Children[0].Properties[2].Value.BinaryData[0], 'First byte');
     Assert.AreEqual(Byte($11), F.Root.Children[0].Properties[2].Value.BinaryData[1023], 'Last byte');
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TGoldenTests.Golden_TypedCollections;
+begin
+  AssertTextRoundTrip('typed_collections.dfm');
+end;
+
+procedure TGoldenTests.Golden_TypedCollections_Structure;
+var
+  F: TFormFile;
+  Coll: TFormValue;
+begin
+  F := TDelphiFormsParser.ParseFile(GoldenPath('typed_collections.dfm'));
+  try
+    Assert.AreEqual('frmTypedCollections', F.Root.Name);
+    Assert.AreEqual(NativeInt(1), F.Root.Children.Count);
+    Assert.AreEqual('ToolBar1', F.Root.Children[0].Name);
+    // Buttons property is a collection with typed items
+    Coll := F.Root.Children[0].Properties[5].Value;
+    Assert.AreEqual(fvCollection, Coll.Kind);
+    Assert.AreEqual(NativeInt(3), Coll.CollectionItems.Count);
+    Assert.AreEqual('TToolButton', Coll.CollectionItems[0].ClassName_);
+    Assert.AreEqual('Open', Coll.CollectionItems[0].Properties[0].Value.StringValue);
+    Assert.AreEqual('TToolButton', Coll.CollectionItems[1].ClassName_);
+    Assert.AreEqual('Save', Coll.CollectionItems[1].Properties[0].Value.StringValue);
+    Assert.AreEqual('TToolButton', Coll.CollectionItems[2].ClassName_);
+    Assert.AreEqual('Close', Coll.CollectionItems[2].Properties[0].Value.StringValue);
   finally
     F.Free;
   end;

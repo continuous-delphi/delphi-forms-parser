@@ -67,6 +67,10 @@ type
     [Test]
     procedure Parse_CollectionValue;
     [Test]
+    procedure Parse_TypedCollectionItems;
+    [Test]
+    procedure Parse_MixedCollectionItems;
+    [Test]
     procedure Parse_MultipleProperties;
     [Test]
     procedure Parse_RealWorldForm;
@@ -426,6 +430,56 @@ begin
     Assert.AreEqual('Col 1', F.Root.Properties[0].Value.CollectionItems[0].Properties[0].Value.StringValue);
     Assert.AreEqual(NativeInt(2), F.Root.Properties[0].Value.CollectionItems[0].Properties.Count);
     Assert.AreEqual('Col 2', F.Root.Properties[0].Value.CollectionItems[1].Properties[0].Value.StringValue);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmParserTests.Parse_TypedCollectionItems;
+var
+  F: TFormFile;
+begin
+  F := FParser.Parse(
+    'object f: TF'#13#10 +
+    '  Buttons = <'#13#10 +
+    '    item TToolButton'#13#10 +
+    '      Caption = ''Open'''#13#10 +
+    '    end'#13#10 +
+    '    item TToolButton'#13#10 +
+    '      Caption = ''Save'''#13#10 +
+    '    end>'#13#10 +
+    'end'#13#10);
+  try
+    Assert.AreEqual(fvCollection, F.Root.Properties[0].Value.Kind);
+    Assert.AreEqual(NativeInt(2), F.Root.Properties[0].Value.CollectionItems.Count);
+    Assert.AreEqual('TToolButton', F.Root.Properties[0].Value.CollectionItems[0].ClassName_);
+    Assert.AreEqual('Open', F.Root.Properties[0].Value.CollectionItems[0].Properties[0].Value.StringValue);
+    Assert.AreEqual('TToolButton', F.Root.Properties[0].Value.CollectionItems[1].ClassName_);
+    Assert.AreEqual('Save', F.Root.Properties[0].Value.CollectionItems[1].Properties[0].Value.StringValue);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmParserTests.Parse_MixedCollectionItems;
+var
+  F: TFormFile;
+begin
+  // Mix of bare 'item' and typed 'item ClassName'
+  F := FParser.Parse(
+    'object f: TF'#13#10 +
+    '  Items = <'#13#10 +
+    '    item'#13#10 +
+    '      Caption = ''Bare'''#13#10 +
+    '    end'#13#10 +
+    '    item TSpecialItem'#13#10 +
+    '      Caption = ''Typed'''#13#10 +
+    '    end>'#13#10 +
+    'end'#13#10);
+  try
+    Assert.AreEqual(NativeInt(2), F.Root.Properties[0].Value.CollectionItems.Count);
+    Assert.AreEqual('', F.Root.Properties[0].Value.CollectionItems[0].ClassName_);
+    Assert.AreEqual('TSpecialItem', F.Root.Properties[0].Value.CollectionItems[1].ClassName_);
   finally
     F.Free;
   end;

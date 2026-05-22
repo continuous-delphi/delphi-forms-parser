@@ -415,6 +415,25 @@ begin
         try
           Advance; // skip 'item'
           SkipTrivia;
+          // Check for optional class name: if next ident is NOT followed by '='
+          // then it's a class name, not a property name
+          if not AtEnd and (CurrentKind = dtkIdentifier) and not MatchIdent('end') then
+          begin
+            // Peek ahead: save position, skip ident, skip trivia, check for '='
+            var SavePos := FPos;
+            Advance; // skip the potential class name
+            SkipTrivia;
+            if not AtEnd and (CurrentKind = dtkEquals) then
+            begin
+              // It was a property name, not a class name -- rewind
+              FPos := SavePos;
+            end
+            else
+            begin
+              // It was a class name -- store it, position is already past it
+              Item.ClassName_ := FTokens[SavePos].Text;
+            end;
+          end;
           // Parse properties until 'end'
           while not AtEnd and not MatchIdent('end') do
           begin

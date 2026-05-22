@@ -4,9 +4,12 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 
 
-## 0.1 - Unreleased
+### 0.2.13
 
-- Initial delphi-forms-parser project in place
+- Support typed collection items (`item ClassName ... end`). Parser detects
+  optional class name via lookahead, writer emits it when present. Golden file
+  and round-trip tests for typed collections.
+[#11](https://github.com/continuous-delphi/delphi-forms-parser/issues/11)
 
 ### 0.2.12
 
@@ -15,6 +18,10 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
   to reproduce byte-identical output for vaSingle, vaExtended, vaCurrency, vaDate,
   vaString, vaLString, vaWString, vaUString, and vaInt32. 9 new round-trip tests.
 [#12](https://github.com/continuous-delphi/delphi-forms-parser/issues/12)
+
+## 0.1 - Unreleased
+
+- Initial delphi-forms-parser project in place
 
 ### 0.1.10
 

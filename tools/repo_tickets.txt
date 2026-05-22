@@ -294,6 +294,7 @@ simpler DFM form AST.
 ---
 Title: Support typed collection items (item ClassName ... end)
 Issue: #11
+Status: closed
 Labels: bug
 Body:
 The text parser only handles bare `item ... end` inside collection values.

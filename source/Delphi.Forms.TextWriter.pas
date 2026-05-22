@@ -201,7 +201,10 @@ begin
   for I := 0 to Value.CollectionItems.Count - 1 do
   begin
     Item := Value.CollectionItems[I];
-    Result := Result + InnerIndent + 'item' + FLineEnding;
+    if Item.ClassName_ <> '' then
+      Result := Result + InnerIndent + 'item ' + Item.ClassName_ + FLineEnding
+    else
+      Result := Result + InnerIndent + 'item' + FLineEnding;
     for J := 0 to Item.Properties.Count - 1 do
       Result := Result + ItemIndent + Item.Properties[J].Name + ' = ' + WriteValue(Item.Properties[J].Value) + FLineEnding;
     Result := Result + InnerIndent + 'end';

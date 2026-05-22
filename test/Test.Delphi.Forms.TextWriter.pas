@@ -69,6 +69,8 @@ type
     procedure RoundTrip_RealWorldForm;
     [Test]
     procedure Write_Canonical_FromConstructedAST;
+    [Test]
+    procedure RoundTrip_TypedCollectionItems;
   end;
 
 implementation
@@ -370,6 +372,20 @@ begin
   finally
     F.Free;
   end;
+end;
+
+procedure TDfmTextWriterTests.RoundTrip_TypedCollectionItems;
+begin
+  AssertRoundTrip(
+    'object f: TF'#13#10 +
+    '  Buttons = <'#13#10 +
+    '    item TToolButton'#13#10 +
+    '      Caption = ''Open'''#13#10 +
+    '    end'#13#10 +
+    '    item TToolButton'#13#10 +
+    '      Caption = ''Save'''#13#10 +
+    '    end>'#13#10 +
+    'end'#13#10);
 end;
 
 initialization
