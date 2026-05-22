@@ -4,7 +4,19 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 
 
-### 0.1.10 - Unreleased
+## 0.1 - Unreleased
+
+- Initial delphi-forms-parser project in place
+
+### 0.2.12
+
+- Preserve original binary value type tags for true binary round-trip. Reader
+  stores OriginalValueType and ExtendedRawBytes on TFormValue; writer uses them
+  to reproduce byte-identical output for vaSingle, vaExtended, vaCurrency, vaDate,
+  vaString, vaLString, vaWString, vaUString, and vaInt32. 9 new round-trip tests.
+[#12](https://github.com/continuous-delphi/delphi-forms-parser/issues/12)
+
+### 0.1.10
 
 - Add edge-case golden files: empty form (0 properties, 0 children), deep nesting
   (12 levels), and large binary data (1024 bytes / 32 hex lines). 6 new tests.

@@ -21,13 +21,13 @@ type
     function ReadSingle: Single;
     function ReadDouble: Double;
     function ReadCurrency: Currency;
-    function ReadExtended80: Extended;
     function ReadShortString: string;
     function ReadLString: string;
     function ReadWString: string;
     function ReadUTF8String: string;
     function ReadUString: string;
     function ReadBytes(Count: Integer): TBytes;
+    function ReadExtended80FromBytes(const Buf: TBytes): Extended;
     function ReadObject: TFormObject;
     function ReadValue: TFormValue;
     procedure ReadProperties(Obj: TFormObject);
@@ -101,11 +101,10 @@ begin
   FStream.ReadBuffer(Result, 8);
 end;
 
-function TDfmBinaryReader.ReadExtended80: Extended;
+function TDfmBinaryReader.ReadExtended80FromBytes(const Buf: TBytes): Extended;
 var
-  Buf: array[0..9] of Byte;
   {$IF SizeOf(Extended) = 10}
-  E: Extended absolute Buf;
+  E: Extended;
   {$ELSE}
   D: Double;
   Sign: Integer;
@@ -113,11 +112,10 @@ var
   Mantissa: UInt64;
   {$IFEND}
 begin
-  FStream.ReadBuffer(Buf, 10);
   {$IF SizeOf(Extended) = 10}
+  Move(Buf[0], E, 10);
   Result := E;
   {$ELSE}
-  // Convert 80-bit extended to 64-bit double
   Sign := (Buf[9] shr 7) and 1;
   Exp := ((Buf[9] and $7F) shl 8) or Buf[8];
   Mantissa := PUInt64(@Buf[0])^;
@@ -128,7 +126,6 @@ begin
     D := Infinity
   else
   begin
-    // Extended bias is 16383, Double bias is 1023
     Exp := Exp - 16383 + 1023;
     if Exp <= 0 then
       D := 0.0
@@ -136,10 +133,8 @@ begin
       D := Infinity
     else
     begin
-      // Extended has explicit integer bit, Double does not
-      // Take top 52 bits of the 63-bit fractional part
-      Mantissa := Mantissa shl 1; // shift out the integer bit
-      Mantissa := Mantissa shr 12; // keep top 52 bits
+      Mantissa := Mantissa shl 1;
+      Mantissa := Mantissa shr 12;
       PUInt64(@D)^ := (UInt64(Sign) shl 63) or (UInt64(Exp) shl 52) or Mantissa;
     end;
   end;
@@ -148,6 +143,7 @@ begin
   Result := D;
   {$IFEND}
 end;
+
 
 function TDfmBinaryReader.ReadShortString: string;
 var
@@ -309,86 +305,110 @@ begin
     vaInt8:
     begin
       Result := TFormValue.Create(fvInteger);
+      Result.OriginalValueType := vaInt8;
       Result.IntValue := ShortInt(ReadByte);
     end;
     vaInt16:
     begin
       Result := TFormValue.Create(fvInteger);
+      Result.OriginalValueType := vaInt16;
       Result.IntValue := SmallInt(ReadWord);
     end;
     vaInt32:
     begin
       Result := TFormValue.Create(fvInteger);
+      Result.OriginalValueType := vaInt32;
       Result.IntValue := ReadInt32;
     end;
     vaInt64:
     begin
       Result := TFormValue.Create(fvInteger);
+      Result.OriginalValueType := vaInt64;
       Result.IntValue := ReadInt64;
     end;
     vaSingle:
     begin
       Result := TFormValue.Create(fvFloat);
+      Result.OriginalValueType := vaSingle;
       Result.FloatValue := ReadSingle;
     end;
-    vaDouble, vaDate:
+    vaDouble:
     begin
       Result := TFormValue.Create(fvFloat);
+      Result.OriginalValueType := vaDouble;
+      Result.FloatValue := ReadDouble;
+    end;
+    vaDate:
+    begin
+      Result := TFormValue.Create(fvFloat);
+      Result.OriginalValueType := vaDate;
       Result.FloatValue := ReadDouble;
     end;
     vaExtended:
     begin
       Result := TFormValue.Create(fvFloat);
-      Result.FloatValue := ReadExtended80;
+      Result.OriginalValueType := vaExtended;
+      Result.ExtendedRawBytes := ReadBytes(10);
+      Result.FloatValue := ReadExtended80FromBytes(Result.ExtendedRawBytes);
     end;
     vaCurrency:
     begin
       Result := TFormValue.Create(fvFloat);
+      Result.OriginalValueType := vaCurrency;
       Result.FloatValue := ReadCurrency;
     end;
     vaString:
     begin
       Result := TFormValue.Create(fvString);
+      Result.OriginalValueType := vaString;
       Result.StringValue := ReadShortString;
     end;
     vaLString:
     begin
       Result := TFormValue.Create(fvString);
+      Result.OriginalValueType := vaLString;
       Result.StringValue := ReadLString;
     end;
     vaWString:
     begin
       Result := TFormValue.Create(fvString);
+      Result.OriginalValueType := vaWString;
       Result.StringValue := ReadWString;
     end;
     vaUTF8String:
     begin
       Result := TFormValue.Create(fvString);
+      Result.OriginalValueType := vaUTF8String;
       Result.StringValue := ReadUTF8String;
     end;
     vaUString:
     begin
       Result := TFormValue.Create(fvString);
+      Result.OriginalValueType := vaUString;
       Result.StringValue := ReadUString;
     end;
     vaIdent:
     begin
       Result := TFormValue.Create(fvIdentifier);
+      Result.OriginalValueType := vaIdent;
       Result.IdentValue := ReadShortString;
     end;
     vaFalse:
     begin
       Result := TFormValue.Create(fvBoolean);
+      Result.OriginalValueType := vaFalse;
       Result.BoolValue := False;
     end;
     vaTrue:
     begin
       Result := TFormValue.Create(fvBoolean);
+      Result.OriginalValueType := vaTrue;
       Result.BoolValue := True;
     end;
     vaNil:
     begin
       Result := TFormValue.Create(fvIdentifier);
+      Result.OriginalValueType := vaNil;
       Result.IdentValue := 'nil';
     end;
     vaSet:

@@ -326,6 +326,7 @@ can carry a class name that is not currently stored.
 ---
 Title: Preserve original binary value type tags for true binary round-trip
 Issue: #12
+Status: closed
 Labels: enhancement
 Body:
 The binary writer always uses `vaDouble` for floats and `vaUTF8String` for

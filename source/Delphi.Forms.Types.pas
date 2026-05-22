@@ -44,6 +44,8 @@ type
     ListItems: TFormValueList;
     CollectionItems: TFormObjectList;
     RawText: string;
+    OriginalValueType: Byte;
+    ExtendedRawBytes: TBytes;
     constructor Create(AKind: TFormValueKind);
     destructor Destroy; override;
   end;

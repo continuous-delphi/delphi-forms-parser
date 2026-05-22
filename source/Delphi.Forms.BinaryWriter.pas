@@ -22,7 +22,10 @@ type
     procedure WriteProperty(Prop: TFormProperty);
     procedure WriteValue(Value: TFormValue);
     procedure WriteIntegerValue(Value: Int64);
+    procedure WriteIntegerValueWithTag(Value: Int64; Tag: Byte);
     procedure WriteStringValue(const S: string);
+    procedure WriteStringValueWithTag(const S: string; Tag: Byte);
+    procedure WriteFloatValueWithTag(Value: TFormValue);
   public
     function WriteToBytes(FormFile: TFormFile): TBytes;
     procedure WriteToStream(FormFile: TFormFile; Stream: TStream);
@@ -125,6 +128,17 @@ begin
   end;
 end;
 
+procedure TDfmBinaryWriter.WriteIntegerValueWithTag(Value: Int64; Tag: Byte);
+begin
+  WriteByte(Tag);
+  case Tag of
+    vaInt8: WriteByte(Byte(ShortInt(Value)));
+    vaInt16: WriteWord(Word(SmallInt(Value)));
+    vaInt32: WriteInt32(Int32(Value));
+    vaInt64: WriteInt64(Value);
+  end;
+end;
+
 procedure TDfmBinaryWriter.WriteStringValue(const S: string);
 var
   Buf: TBytes;
@@ -136,23 +150,119 @@ begin
     FStream.WriteBuffer(Buf[0], Length(Buf));
 end;
 
+procedure TDfmBinaryWriter.WriteStringValueWithTag(const S: string; Tag: Byte);
+var
+  Buf: TBytes;
+begin
+  case Tag of
+    vaString:
+    begin
+      Buf := TEncoding.ANSI.GetBytes(S);
+      WriteByte(vaString);
+      WriteByte(Byte(Length(Buf)));
+      if Length(Buf) > 0 then
+        FStream.WriteBuffer(Buf[0], Length(Buf));
+    end;
+    vaLString:
+    begin
+      Buf := TEncoding.ANSI.GetBytes(S);
+      WriteByte(vaLString);
+      WriteInt32(Length(Buf));
+      if Length(Buf) > 0 then
+        FStream.WriteBuffer(Buf[0], Length(Buf));
+    end;
+    vaWString:
+    begin
+      Buf := TEncoding.Unicode.GetBytes(S);
+      WriteByte(vaWString);
+      WriteInt32(Length(Buf) div 2);
+      if Length(Buf) > 0 then
+        FStream.WriteBuffer(Buf[0], Length(Buf));
+    end;
+    vaUTF8String:
+      WriteStringValue(S);
+    vaUString:
+    begin
+      Buf := TEncoding.Unicode.GetBytes(S);
+      WriteByte(vaUString);
+      WriteInt32(Length(Buf) div 2);
+      if Length(Buf) > 0 then
+        FStream.WriteBuffer(Buf[0], Length(Buf));
+    end;
+  else
+    WriteStringValue(S);
+  end;
+end;
+
+procedure TDfmBinaryWriter.WriteFloatValueWithTag(Value: TFormValue);
+var
+  S: Single;
+  D: Double;
+  C: Currency;
+begin
+  case Value.OriginalValueType of
+    vaSingle:
+    begin
+      S := Value.FloatValue;
+      WriteByte(vaSingle);
+      FStream.WriteBuffer(S, 4);
+    end;
+    vaExtended:
+    begin
+      WriteByte(vaExtended);
+      if Length(Value.ExtendedRawBytes) = 10 then
+        FStream.WriteBuffer(Value.ExtendedRawBytes[0], 10)
+      else
+      begin
+        // Fallback: write as double in 10-byte extended slot
+        D := Value.FloatValue;
+        FStream.WriteBuffer(D, 8);
+        WriteByte(0);
+        WriteByte(0);
+      end;
+    end;
+    vaCurrency:
+    begin
+      C := Value.FloatValue;
+      WriteByte(vaCurrency);
+      FStream.WriteBuffer(C, 8);
+    end;
+    vaDate:
+    begin
+      D := Value.FloatValue;
+      WriteByte(vaDate);
+      FStream.WriteBuffer(D, 8);
+    end;
+  else
+    // Default: vaDouble
+    D := Value.FloatValue;
+    WriteByte(vaDouble);
+    FStream.WriteBuffer(D, 8);
+  end;
+end;
+
 procedure TDfmBinaryWriter.WriteValue(Value: TFormValue);
 var
   I: Integer;
-  D: Double;
   CollItem: TFormObject;
 begin
   case Value.Kind of
     fvInteger:
-      WriteIntegerValue(Value.IntValue);
-    fvFloat:
     begin
-      D := Value.FloatValue;
-      WriteByte(vaDouble);
-      FStream.WriteBuffer(D, 8);
+      if Value.OriginalValueType in [vaInt8, vaInt16, vaInt32, vaInt64] then
+        WriteIntegerValueWithTag(Value.IntValue, Value.OriginalValueType)
+      else
+        WriteIntegerValue(Value.IntValue);
     end;
+    fvFloat:
+      WriteFloatValueWithTag(Value);
     fvString:
-      WriteStringValue(Value.StringValue);
+    begin
+      if Value.OriginalValueType in [vaString, vaLString, vaWString, vaUTF8String, vaUString] then
+        WriteStringValueWithTag(Value.StringValue, Value.OriginalValueType)
+      else
+        WriteStringValue(Value.StringValue);
+    end;
     fvBoolean:
     begin
       if Value.BoolValue then

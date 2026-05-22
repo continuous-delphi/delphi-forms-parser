@@ -56,6 +56,24 @@ type
     procedure RoundTrip_ConstructedForm;
     [Test]
     procedure RoundTrip_MultipleProperties;
+    [Test]
+    procedure RoundTrip_PreservesInt32Tag;
+    [Test]
+    procedure RoundTrip_PreservesSingleTag;
+    [Test]
+    procedure RoundTrip_PreservesCurrencyTag;
+    [Test]
+    procedure RoundTrip_PreservesDateTag;
+    [Test]
+    procedure RoundTrip_PreservesShortStringTag;
+    [Test]
+    procedure RoundTrip_PreservesLStringTag;
+    [Test]
+    procedure RoundTrip_PreservesWStringTag;
+    [Test]
+    procedure RoundTrip_PreservesUStringTag;
+    [Test]
+    procedure RoundTrip_PreservesExtendedTag;
   end;
 
 implementation
@@ -565,6 +583,176 @@ begin
   finally
     F.Free;
   end;
+end;
+
+procedure AppendByte(var Data: TBytes; B: Byte);
+var
+  Len: Integer;
+begin
+  Len := Length(Data);
+  SetLength(Data, Len + 1);
+  Data[Len] := B;
+end;
+
+procedure AppendShortString(var Data: TBytes; const S: string);
+var
+  I: Integer;
+begin
+  AppendByte(Data, Byte(Length(S)));
+  for I := 1 to Length(S) do
+    AppendByte(Data, Byte(S[I]));
+end;
+
+procedure AppendBytes(var Data: TBytes; const B: TBytes);
+var
+  Len: Integer;
+begin
+  Len := Length(Data);
+  SetLength(Data, Len + Length(B));
+  if Length(B) > 0 then
+    Move(B[0], Data[Len], Length(B));
+end;
+
+function BuildBinaryWithPropValue(const PropName: string; const ValueBytes: TBytes): TBytes;
+begin
+  Result := nil;
+  AppendBytes(Result, TBytes.Create(Ord('T'), Ord('P'), Ord('F'), Ord('0')));
+  AppendShortString(Result, 'TF');
+  AppendShortString(Result, 'f');
+  AppendShortString(Result, PropName);
+  AppendBytes(Result, ValueBytes);
+  AppendByte(Result, 0); // end properties
+  AppendByte(Result, 0); // end children
+end;
+
+procedure AssertBinaryBytesRoundTrip(const OriginalData: TBytes; Reader: TDfmBinaryReader; Writer: TDfmBinaryWriter);
+var
+  F: TFormFile;
+  OutputData: TBytes;
+begin
+  F := Reader.ReadFromBytes(OriginalData);
+  try
+    OutputData := Writer.WriteToBytes(F);
+    // The writer adds $FF prefix; original may not have it
+    // Compare from the TPF0 signature onward
+    var OrigStart: Integer := 0;
+    var OutStart: Integer := 0;
+    if OriginalData[0] = $FF then OrigStart := 1;
+    if OutputData[0] = $FF then OutStart := 1;
+    var OrigLen: Integer := Length(OriginalData) - OrigStart;
+    var OutLen: Integer := Length(OutputData) - OutStart;
+    Assert.AreEqual(NativeInt(OrigLen), NativeInt(OutLen), 'Round-trip byte length mismatch');
+    Assert.IsTrue(CompareMem(@OriginalData[OrigStart], @OutputData[OutStart], OrigLen), 'Round-trip bytes differ');
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmBinaryWriterTests.RoundTrip_PreservesInt32Tag;
+var
+  ValBytes: TBytes;
+begin
+  // Force vaInt32 for a value that fits in vaInt8
+  ValBytes := TBytes.Create(vaInt32, 42, 0, 0, 0);
+  AssertBinaryBytesRoundTrip(BuildBinaryWithPropValue('Left', ValBytes), FReader, FWriter);
+end;
+
+procedure TDfmBinaryWriterTests.RoundTrip_PreservesSingleTag;
+var
+  ValBytes: TBytes;
+  S: Single;
+begin
+  S := 3.14;
+  ValBytes := nil;
+  AppendByte(ValBytes, vaSingle);
+  SetLength(ValBytes, Length(ValBytes) + 4);
+  Move(S, ValBytes[1], 4);
+  AssertBinaryBytesRoundTrip(BuildBinaryWithPropValue('Scale', ValBytes), FReader, FWriter);
+end;
+
+procedure TDfmBinaryWriterTests.RoundTrip_PreservesCurrencyTag;
+var
+  ValBytes: TBytes;
+  C: Currency;
+begin
+  C := 99.95;
+  ValBytes := nil;
+  AppendByte(ValBytes, vaCurrency);
+  SetLength(ValBytes, Length(ValBytes) + 8);
+  Move(C, ValBytes[1], 8);
+  AssertBinaryBytesRoundTrip(BuildBinaryWithPropValue('Price', ValBytes), FReader, FWriter);
+end;
+
+procedure TDfmBinaryWriterTests.RoundTrip_PreservesDateTag;
+var
+  ValBytes: TBytes;
+  D: Double;
+begin
+  D := 44000.5; // a TDateTime value
+  ValBytes := nil;
+  AppendByte(ValBytes, vaDate);
+  SetLength(ValBytes, Length(ValBytes) + 8);
+  Move(D, ValBytes[1], 8);
+  AssertBinaryBytesRoundTrip(BuildBinaryWithPropValue('Created', ValBytes), FReader, FWriter);
+end;
+
+procedure TDfmBinaryWriterTests.RoundTrip_PreservesShortStringTag;
+var
+  ValBytes: TBytes;
+begin
+  // vaString + ShortString "Hi"
+  ValBytes := TBytes.Create(vaString, 2, Ord('H'), Ord('i'));
+  AssertBinaryBytesRoundTrip(BuildBinaryWithPropValue('Hint', ValBytes), FReader, FWriter);
+end;
+
+procedure TDfmBinaryWriterTests.RoundTrip_PreservesLStringTag;
+var
+  ValBytes: TBytes;
+begin
+  // vaLString + Int32 len (3) + "abc"
+  ValBytes := TBytes.Create(vaLString, 3, 0, 0, 0, Ord('a'), Ord('b'), Ord('c'));
+  AssertBinaryBytesRoundTrip(BuildBinaryWithPropValue('Hint', ValBytes), FReader, FWriter);
+end;
+
+procedure TDfmBinaryWriterTests.RoundTrip_PreservesWStringTag;
+var
+  Data: TBytes;
+  WBuf: TBytes;
+begin
+  // vaWString + Int32 charcount (2) + UTF-16LE "Hi"
+  WBuf := TEncoding.Unicode.GetBytes('Hi');
+  Data := nil;
+  AppendByte(Data, vaWString);
+  AppendByte(Data, 2); AppendByte(Data, 0); AppendByte(Data, 0); AppendByte(Data, 0); // Int32 = 2
+  AppendBytes(Data, WBuf);
+  AssertBinaryBytesRoundTrip(BuildBinaryWithPropValue('Caption', Data), FReader, FWriter);
+end;
+
+procedure TDfmBinaryWriterTests.RoundTrip_PreservesUStringTag;
+var
+  Data: TBytes;
+  WBuf: TBytes;
+begin
+  // vaUString + Int32 charcount (2) + UTF-16LE "Ok"
+  WBuf := TEncoding.Unicode.GetBytes('Ok');
+  Data := nil;
+  AppendByte(Data, vaUString);
+  AppendByte(Data, 2); AppendByte(Data, 0); AppendByte(Data, 0); AppendByte(Data, 0);
+  AppendBytes(Data, WBuf);
+  AssertBinaryBytesRoundTrip(BuildBinaryWithPropValue('Text', Data), FReader, FWriter);
+end;
+
+procedure TDfmBinaryWriterTests.RoundTrip_PreservesExtendedTag;
+var
+  Data: TBytes;
+  ExtBytes: TBytes;
+begin
+  // vaExtended + 10 raw bytes (a known 80-bit extended value)
+  ExtBytes := TBytes.Create($00, $00, $00, $00, $00, $00, $00, $C0, $00, $40); // 2.0 in 80-bit extended
+  Data := nil;
+  AppendByte(Data, vaExtended);
+  AppendBytes(Data, ExtBytes);
+  AssertBinaryBytesRoundTrip(BuildBinaryWithPropValue('Value', Data), FReader, FWriter);
 end;
 
 initialization
