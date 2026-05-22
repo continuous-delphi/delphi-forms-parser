@@ -129,3 +129,33 @@ Value          = NumericValue | StringValue | BoolValue | IdentValue
 - [ ] 0 warnings, 0 errors
 - [ ] All parser tests pass with zero memory leaks
 - [ ] Parses representative DFM snippets into correct AST structure
+
+---
+Title: Text DFM writer -- AST to text with round-trip fidelity
+Issue: #6
+Status: closed
+Labels: enhancement
+Body:
+Implement a text writer that serializes TFormFile back to DFM text format.
+This is a core component -- round-trip fidelity (parse then write == original)
+is a design invariant verified on every parse.
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.TextWriter.pas` -- `TDfmTextWriter.Write(FormFile): string`
+- [ ] `test/Test.Delphi.Forms.TextWriter.pas` -- writer tests including
+  round-trip verification (parse -> write -> compare == original)
+
+## Design
+
+- When RawText is available on values (text-parsed ASTs), use it for exact
+  round-trip reproduction
+- When RawText is empty (binary-parsed ASTs), produce canonical formatting:
+  2-space indent per nesting level, hex data wrapped at 64 chars per line
+- Canonical output must be re-parseable (write -> parse -> write is stable)
+
+## Acceptance criteria
+
+- [ ] 0 warnings, 0 errors
+- [ ] All writer tests pass with zero memory leaks
+- [ ] Round-trip verified: parse(source) -> write -> equals source
