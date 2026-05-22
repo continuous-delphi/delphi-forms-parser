@@ -3,7 +3,7 @@
 #
 # Resource files are binaries containing manifest, project icon and version info.
 # They can not be viewed as text or compared by diff-tools. Consider replacing them with .rc files.
-#*.res
+*.res
 #
 # Type library file (binary). In old Delphi versions it should be stored.
 # Since Delphi 2009 it is produced from .ridl file and can safely be ignored.
@@ -26,17 +26,20 @@
 #*.obj
 #
 
-# Default Delphi compiler directories
-# Content of this directories are generated with each Compile/Construct of a project.
-# Most of the time, files here have not there place in a code repository.
-#Win32/
-#Win64/
-#OSX64/
-#OSXARM64/
-#Android/
-#Android64/
-#iOSDevice64/
-#Linux64/
+# default Debug and Release directories contain binaries only
+Release/
+Debug/
+DCU/
+
+# Default Platform output directories
+Linux64/
+OSX32/
+OSX64/
+Win32/
+Win64/
+Android/
+TMSWeb/
+
 
 # Delphi compiler-generated binaries (safe to delete)
 *.exe
@@ -69,6 +72,7 @@
 *.tvsconfig
 *.dsk
 *.dsv
+*.prjmgc
 
 # Delphi history and backups
 __history/
@@ -80,3 +84,35 @@ __recovery/
 
 # Boss dependency manager vendor folder https://github.com/HashLoad/boss
 modules/
+
+# FinalBuilder
+*.fbpInf    # Project info cache
+*.fbl8      # Log files
+*.fbpbrk    # Breakpoints
+*.fb8lck    # Lock files
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# SonarQube scanner working folder
+.scannerwork
+
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# TestInsight
+TestInsightSettings.ini
+
+/tools/*.ps1
+/tools/commit*.bat
+*.html
+*.xml
+*.dot
+*.json
+coverage.db
+.coverage-settings
+*.md

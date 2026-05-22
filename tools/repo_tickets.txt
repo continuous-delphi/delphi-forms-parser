@@ -1,0 +1,31 @@
+# Tickets for the delphi-forms-parser project
+# Repo remote url: https://github.com/continuous-delphi/delphi-forms-parser
+# File used by create-github-issues.ps1
+# dev-automation-tooling script & document reference: C:\code\dev-automation-tooling
+
+---
+Title: Project scaffolding -- directory structure, CI, test runner
+Issue: #1
+Labels: setup
+Body:
+Set up the initial project structure for `delphi-forms-parser`.
+
+## Deliverables
+
+- [x] Directory structure: `source/`, `test/`, `test/golden/`, `tools/`
+- [x] `source/Delphi.Forms.Info.pas` -- version constant (`0.1.0.0`)
+- [x] `test/Delphi.Forms.Tests.dpr` -- DUnitX test runner with FastMM4 leak monitor
+- [x] `test/Delphi.Forms.Tests.dproj` -- Win32+Win64, Debug+Release
+- [x] `Delphi.Forms.Projects.groupproj` -- group project (tests + TreeDump utility)
+- [x] `ci.bat` + `ci.json` -- quick CI pipeline (Win64 Debug, coverage)
+- [x] `delphi-ci.json` -- full CI pipeline (Win64 Debug)
+- [x] `.gitignore` and `.gitattributes` -- Delphi conventions
+- [x] `README.md`, `LICENSE` (MIT), `CHANGELOG.md`
+- [x] `tools/repo_tickets.txt` -- ticket file
+- [x] Smoke test fixture (`Test.Delphi.Forms.Smoke.pas`)
+
+## Acceptance criteria
+
+- [x] Test project compiles with 0 warnings, 0 errors on Win64 Debug
+- [x] Test runner executes and reports results
+- [x] CI pipeline runs end-to-end via `ci.bat`

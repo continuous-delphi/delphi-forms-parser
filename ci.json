@@ -1,0 +1,79 @@
+{
+  "root": "./",
+   "defaults": {
+    "coverage": {
+      "engine": "radCodeCoverage",
+      "enginePath": "radCodeCoverage.x64.exe",
+      "formats!": ["md","covdb"], 
+      "timeoutSeconds": 60
+    },
+    "callgraph": {
+      "engine": "radCallGraph",
+      "enginePath": "radCallGraph.exe",
+      "formats!": ["json", "dot", "txt"],
+      "outputDir": "assets/callgraph",
+      "timeoutSeconds": 60
+    }
+  },
+  "pipeline": [
+    {
+      "action": "clean",
+      "level": "Deep",
+      "outputLevel": "Quiet",
+      "includeFilePattern": ["*.res"],
+      "jobs": [{"name": "Repo clean", "root": "./test" }]
+    },
+    {
+      "action": "IncVer",
+      "jobs": [{
+        "name": "Build version",
+        "file": "source/Delphi.Forms.Info.pas",
+        "target": "Text",
+        "style": "WinVer",
+        "part": "build",
+        "pattern": "(\\d+\\.\\d+\\.\\d+\\.\\d+)"
+      }]
+    },
+    {
+      "action": "build",
+      "engine": "MSBuild",
+      "toolchain": {"version": "Latest"},
+      "platform": "Win64",
+      "verbosity": "minimal",
+      "jobs": [
+        { "name": "Win64 Test project (Debug)",
+          "projectFile": "test/Delphi.Forms.Tests.dproj",
+          "configuration": "Debug",
+          "defines": ["CI"] }
+      ]
+    },
+    {
+      "action": "run",
+      "timeoutSeconds": 10,
+      "jobs": [
+        { "name": "Forms Win64 Tests",
+          "execute": "test/Win64/Debug/Delphi.Forms.Tests.exe",
+          "arguments": ["-b", "-l:Warning", "-cm:Quiet"] }
+      ]
+    },
+    {
+      "action": "Coverage",
+      "jobs": [
+        { "name": "Win64 Coverage",
+          "execute": "test/Win64/Debug/Delphi.Forms.Tests.exe",
+          "mapFile": "test/Win64/Debug/Delphi.Forms.Tests.map",
+          "sourceDir": ["/source", "/test"],
+          "outputDir": "assets/coverage",
+          "arguments": ["-b", "-cm:off"],
+          "badge": "assets/coverage/coverage-badge.svg" }
+      ]
+    },
+    {
+      "action": "CallGraph",
+      "jobs": [
+        { "name": "Lexer Call Graph",
+          "path": ["/source", "/test"] }
+      ]
+    }
+  ]
+}

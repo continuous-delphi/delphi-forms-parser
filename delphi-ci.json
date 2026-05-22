@@ -1,0 +1,52 @@
+{
+  "root": "./",
+  "defaults": {
+    "clean": {
+      "level": "deep",
+      "outputLevel": "Quiet"
+    },
+    "build": {
+      "engine": "MSBuild",
+      "toolchain": { "version": "Latest" },
+      "platform": "Win64",
+      "configuration": "Release",
+      "verbosity": "minimal"
+    }
+  },
+  "pipeline": [
+    {
+      "action": "Clean",
+      "jobs": [
+        { "name": "Repo clean", "root": "./" }
+      ]
+    },
+    {
+      "action": "IncVer",
+      "jobs": [{
+        "name": "Build version",
+        "file": "source/Delphi.Forms.Info.pas",
+        "target": "Text",
+        "style": "WinVer",
+        "part": "build",
+        "pattern": "(\\d+\\.\\d+\\.\\d+\\.\\d+)"
+      }]
+    },
+    {
+      "action": "Build",
+      "jobs": [
+        { "name": "Win64 Test project (Debug)",
+          "projectFile": "test/Delphi.Forms.Tests.dproj",
+          "configuration": "Debug",
+          "defines": ["CI"] }
+      ]
+    },
+    {
+      "action": "Run",
+      "jobs": [
+        { "name": "Forms Win64 Tests",
+          "execute": "test/Win64/Debug/Delphi.Forms.Tests.exe",
+          "arguments": ["-b", "-l:Warning", "-cm:Quiet"] }
+      ]
+    }
+  ]
+}
