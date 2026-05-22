@@ -1,0 +1,541 @@
+unit Delphi.Forms.BinaryReader;
+
+interface
+
+uses
+  System.SysUtils,
+  System.Classes,
+  System.Math,
+  System.Generics.Collections,
+  Delphi.Forms.Types;
+
+type
+
+  TDfmBinaryReader = class
+  private
+    FStream: TStream;
+    function ReadByte: Byte;
+    function ReadWord: Word;
+    function ReadInt32: Int32;
+    function ReadInt64: Int64;
+    function ReadSingle: Single;
+    function ReadDouble: Double;
+    function ReadCurrency: Currency;
+    function ReadExtended80: Extended;
+    function ReadShortString: string;
+    function ReadLString: string;
+    function ReadWString: string;
+    function ReadUTF8String: string;
+    function ReadUString: string;
+    function ReadBytes(Count: Integer): TBytes;
+    function ReadObject: TFormObject;
+    function ReadValue: TFormValue;
+    procedure ReadProperties(Obj: TFormObject);
+    procedure ReadChildren(Obj: TFormObject);
+  public
+    function ReadFromStream(Stream: TStream): TFormFile;
+    function ReadFromBytes(const Data: TBytes): TFormFile;
+    function ReadFromFile(const FileName: string): TFormFile;
+  end;
+
+const
+  vaList       = 1;
+  vaInt8       = 2;
+  vaInt16      = 3;
+  vaInt32      = 4;
+  vaExtended   = 5;
+  vaString     = 6;
+  vaIdent      = 7;
+  vaFalse      = 8;
+  vaTrue       = 9;
+  vaBinary     = 10;
+  vaSet        = 11;
+  vaLString    = 12;
+  vaNil        = 13;
+  vaCollection = 14;
+  vaSingle     = 15;
+  vaDouble     = 16;
+  vaCurrency   = 17;
+  vaDate       = 18;
+  vaWString    = 19;
+  vaInt64      = 20;
+  vaUTF8String = 21;
+  vaUString    = 22;
+
+implementation
+
+{ TDfmBinaryReader }
+
+function TDfmBinaryReader.ReadByte: Byte;
+begin
+  FStream.ReadBuffer(Result, 1);
+end;
+
+function TDfmBinaryReader.ReadWord: Word;
+begin
+  FStream.ReadBuffer(Result, 2);
+end;
+
+function TDfmBinaryReader.ReadInt32: Int32;
+begin
+  FStream.ReadBuffer(Result, 4);
+end;
+
+function TDfmBinaryReader.ReadInt64: Int64;
+begin
+  FStream.ReadBuffer(Result, 8);
+end;
+
+function TDfmBinaryReader.ReadSingle: Single;
+begin
+  FStream.ReadBuffer(Result, 4);
+end;
+
+function TDfmBinaryReader.ReadDouble: Double;
+begin
+  FStream.ReadBuffer(Result, 8);
+end;
+
+function TDfmBinaryReader.ReadCurrency: Currency;
+begin
+  FStream.ReadBuffer(Result, 8);
+end;
+
+function TDfmBinaryReader.ReadExtended80: Extended;
+var
+  Buf: array[0..9] of Byte;
+  {$IF SizeOf(Extended) = 10}
+  E: Extended absolute Buf;
+  {$ELSE}
+  D: Double;
+  Sign: Integer;
+  Exp: Integer;
+  Mantissa: UInt64;
+  {$IFEND}
+begin
+  FStream.ReadBuffer(Buf, 10);
+  {$IF SizeOf(Extended) = 10}
+  Result := E;
+  {$ELSE}
+  // Convert 80-bit extended to 64-bit double
+  Sign := (Buf[9] shr 7) and 1;
+  Exp := ((Buf[9] and $7F) shl 8) or Buf[8];
+  Mantissa := PUInt64(@Buf[0])^;
+
+  if (Exp = 0) and (Mantissa = 0) then
+    D := 0.0
+  else if Exp = $7FFF then
+    D := Infinity
+  else
+  begin
+    // Extended bias is 16383, Double bias is 1023
+    Exp := Exp - 16383 + 1023;
+    if Exp <= 0 then
+      D := 0.0
+    else if Exp >= $7FF then
+      D := Infinity
+    else
+    begin
+      // Extended has explicit integer bit, Double does not
+      // Take top 52 bits of the 63-bit fractional part
+      Mantissa := Mantissa shl 1; // shift out the integer bit
+      Mantissa := Mantissa shr 12; // keep top 52 bits
+      PUInt64(@D)^ := (UInt64(Sign) shl 63) or (UInt64(Exp) shl 52) or Mantissa;
+    end;
+  end;
+  if Sign = 1 then
+    D := -Abs(D);
+  Result := D;
+  {$IFEND}
+end;
+
+function TDfmBinaryReader.ReadShortString: string;
+var
+  Len: Byte;
+  Buf: TBytes;
+begin
+  Len := ReadByte;
+  if Len = 0 then
+    Exit('');
+  SetLength(Buf, Len);
+  FStream.ReadBuffer(Buf[0], Len);
+  Result := TEncoding.ANSI.GetString(Buf);
+end;
+
+function TDfmBinaryReader.ReadLString: string;
+var
+  Len: Int32;
+  Buf: TBytes;
+begin
+  Len := ReadInt32;
+  if Len = 0 then
+    Exit('');
+  SetLength(Buf, Len);
+  FStream.ReadBuffer(Buf[0], Len);
+  Result := TEncoding.ANSI.GetString(Buf);
+end;
+
+function TDfmBinaryReader.ReadWString: string;
+var
+  Len: Int32;
+  Buf: TBytes;
+begin
+  Len := ReadInt32;
+  if Len = 0 then
+    Exit('');
+  SetLength(Buf, Len * 2);
+  FStream.ReadBuffer(Buf[0], Len * 2);
+  Result := TEncoding.Unicode.GetString(Buf);
+end;
+
+function TDfmBinaryReader.ReadUTF8String: string;
+var
+  Len: Int32;
+  Buf: TBytes;
+begin
+  Len := ReadInt32;
+  if Len = 0 then
+    Exit('');
+  SetLength(Buf, Len);
+  FStream.ReadBuffer(Buf[0], Len);
+  Result := TEncoding.UTF8.GetString(Buf);
+end;
+
+function TDfmBinaryReader.ReadUString: string;
+var
+  Len: Int32;
+  Buf: TBytes;
+begin
+  Len := ReadInt32;
+  if Len = 0 then
+    Exit('');
+  SetLength(Buf, Len * 2);
+  FStream.ReadBuffer(Buf[0], Len * 2);
+  Result := TEncoding.Unicode.GetString(Buf);
+end;
+
+function TDfmBinaryReader.ReadBytes(Count: Integer): TBytes;
+begin
+  SetLength(Result, Count);
+  if Count > 0 then
+    FStream.ReadBuffer(Result[0], Count);
+end;
+
+function TDfmBinaryReader.ReadObject: TFormObject;
+var
+  ClassNameLen: Byte;
+  Buf: TBytes;
+begin
+  Result := TFormObject.Create;
+  try
+    // Read flags/object kind from class name prefix byte
+    ClassNameLen := ReadByte;
+    if ClassNameLen and $F0 <> 0 then
+    begin
+      case ClassNameLen and $F0 of
+        $10: Result.ObjectKind := okInherited;
+        $20: Result.ObjectKind := okInline;
+      else
+        Result.ObjectKind := okObject;
+      end;
+      ClassNameLen := ClassNameLen and $0F;
+    end;
+
+    if ClassNameLen > 0 then
+    begin
+      SetLength(Buf, ClassNameLen);
+      FStream.ReadBuffer(Buf[0], ClassNameLen);
+      Result.ClassName_ := TEncoding.ANSI.GetString(Buf);
+    end;
+
+    Result.Name := ReadShortString;
+
+    ReadProperties(Result);
+    ReadChildren(Result);
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+procedure TDfmBinaryReader.ReadProperties(Obj: TFormObject);
+var
+  NameLen: Byte;
+  PropName: string;
+  Buf: TBytes;
+  Val: TFormValue;
+begin
+  while True do
+  begin
+    NameLen := ReadByte;
+    if NameLen = 0 then
+      Break;
+    SetLength(Buf, NameLen);
+    FStream.ReadBuffer(Buf[0], NameLen);
+    PropName := TEncoding.ANSI.GetString(Buf);
+    Val := ReadValue;
+    Obj.Properties.Add(TFormProperty.Create(PropName, Val));
+  end;
+end;
+
+procedure TDfmBinaryReader.ReadChildren(Obj: TFormObject);
+var
+  PeekByte: Byte;
+begin
+  while True do
+  begin
+    PeekByte := ReadByte;
+    if PeekByte = 0 then
+      Break;
+    // Put back the byte -- it's the start of a child object's class name length
+    FStream.Position := FStream.Position - 1;
+    Obj.Children.Add(ReadObject);
+  end;
+end;
+
+function TDfmBinaryReader.ReadValue: TFormValue;
+var
+  ValueType: Byte;
+  Len: Int32;
+  SetItem: string;
+  Items: TList<string>;
+  CollItem: TFormObject;
+  NameLen: Byte;
+  Buf: TBytes;
+  PropName: string;
+begin
+  ValueType := ReadByte;
+  case ValueType of
+    vaInt8:
+    begin
+      Result := TFormValue.Create(fvInteger);
+      Result.IntValue := ShortInt(ReadByte);
+    end;
+    vaInt16:
+    begin
+      Result := TFormValue.Create(fvInteger);
+      Result.IntValue := SmallInt(ReadWord);
+    end;
+    vaInt32:
+    begin
+      Result := TFormValue.Create(fvInteger);
+      Result.IntValue := ReadInt32;
+    end;
+    vaInt64:
+    begin
+      Result := TFormValue.Create(fvInteger);
+      Result.IntValue := ReadInt64;
+    end;
+    vaSingle:
+    begin
+      Result := TFormValue.Create(fvFloat);
+      Result.FloatValue := ReadSingle;
+    end;
+    vaDouble, vaDate:
+    begin
+      Result := TFormValue.Create(fvFloat);
+      Result.FloatValue := ReadDouble;
+    end;
+    vaExtended:
+    begin
+      Result := TFormValue.Create(fvFloat);
+      Result.FloatValue := ReadExtended80;
+    end;
+    vaCurrency:
+    begin
+      Result := TFormValue.Create(fvFloat);
+      Result.FloatValue := ReadCurrency;
+    end;
+    vaString:
+    begin
+      Result := TFormValue.Create(fvString);
+      Result.StringValue := ReadShortString;
+    end;
+    vaLString:
+    begin
+      Result := TFormValue.Create(fvString);
+      Result.StringValue := ReadLString;
+    end;
+    vaWString:
+    begin
+      Result := TFormValue.Create(fvString);
+      Result.StringValue := ReadWString;
+    end;
+    vaUTF8String:
+    begin
+      Result := TFormValue.Create(fvString);
+      Result.StringValue := ReadUTF8String;
+    end;
+    vaUString:
+    begin
+      Result := TFormValue.Create(fvString);
+      Result.StringValue := ReadUString;
+    end;
+    vaIdent:
+    begin
+      Result := TFormValue.Create(fvIdentifier);
+      Result.IdentValue := ReadShortString;
+    end;
+    vaFalse:
+    begin
+      Result := TFormValue.Create(fvBoolean);
+      Result.BoolValue := False;
+    end;
+    vaTrue:
+    begin
+      Result := TFormValue.Create(fvBoolean);
+      Result.BoolValue := True;
+    end;
+    vaNil:
+    begin
+      Result := TFormValue.Create(fvIdentifier);
+      Result.IdentValue := 'nil';
+    end;
+    vaSet:
+    begin
+      Result := TFormValue.Create(fvSet);
+      try
+        Items := TList<string>.Create;
+        try
+          while True do
+          begin
+            SetItem := ReadShortString;
+            if SetItem = '' then
+              Break;
+            Items.Add(SetItem);
+          end;
+          Result.SetItems := Items.ToArray;
+        finally
+          Items.Free;
+        end;
+      except
+        Result.Free;
+        raise;
+      end;
+    end;
+    vaBinary:
+    begin
+      Result := TFormValue.Create(fvBinary);
+      try
+        Len := ReadInt32;
+        Result.BinaryData := ReadBytes(Len);
+      except
+        Result.Free;
+        raise;
+      end;
+    end;
+    vaList:
+    begin
+      Result := TFormValue.Create(fvList);
+      try
+        while True do
+        begin
+          if ReadByte = 0 then
+            Break;
+          FStream.Position := FStream.Position - 1;
+          Result.ListItems.Add(ReadValue);
+        end;
+      except
+        Result.Free;
+        raise;
+      end;
+    end;
+    vaCollection:
+    begin
+      Result := TFormValue.Create(fvCollection);
+      try
+        while True do
+        begin
+          if ReadByte = 0 then
+            Break;
+          FStream.Position := FStream.Position - 1;
+          CollItem := TFormObject.Create;
+          try
+            // Collection items: read item index (vaInt* value), then properties
+            ReadValue.Free; // skip the item index
+            // Read properties until zero-length name
+            while True do
+            begin
+              NameLen := ReadByte;
+              if NameLen = 0 then
+                Break;
+              SetLength(Buf, NameLen);
+              FStream.ReadBuffer(Buf[0], NameLen);
+              PropName := TEncoding.ANSI.GetString(Buf);
+              CollItem.Properties.Add(TFormProperty.Create(PropName, ReadValue));
+            end;
+          except
+            CollItem.Free;
+            raise;
+          end;
+          Result.CollectionItems.Add(CollItem);
+        end;
+      except
+        Result.Free;
+        raise;
+      end;
+    end;
+  else
+    raise Exception.CreateFmt('Unknown binary value type: %d at position %d', [ValueType, FStream.Position - 1]);
+  end;
+end;
+
+function TDfmBinaryReader.ReadFromStream(Stream: TStream): TFormFile;
+var
+  Sig: array[0..3] of AnsiChar;
+  FirstByte: Byte;
+begin
+  FStream := Stream;
+
+  // Check for $FF prefix
+  FirstByte := ReadByte;
+  if FirstByte = $FF then
+  begin
+    // Read TPF0 signature
+    FStream.ReadBuffer(Sig, 4);
+    if string(Sig) <> 'TPF0' then
+      raise Exception.Create('Invalid binary DFM: expected TPF0 signature');
+  end
+  else
+  begin
+    // No $FF prefix; check if it starts with TPF0 directly
+    FStream.Position := FStream.Position - 1;
+    FStream.ReadBuffer(Sig, 4);
+    if string(Sig) <> 'TPF0' then
+      raise Exception.Create('Invalid binary DFM: expected TPF0 signature');
+  end;
+
+  Result := TFormFile.Create;
+  try
+    Result.Root := ReadObject;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+function TDfmBinaryReader.ReadFromBytes(const Data: TBytes): TFormFile;
+var
+  Stream: TBytesStream;
+begin
+  Stream := TBytesStream.Create(Data);
+  try
+    Result := ReadFromStream(Stream);
+  finally
+    Stream.Free;
+  end;
+end;
+
+function TDfmBinaryReader.ReadFromFile(const FileName: string): TFormFile;
+var
+  Stream: TFileStream;
+begin
+  Stream := TFileStream.Create(FileName, fmOpenRead or fmShareDenyNone);
+  try
+    Result := ReadFromStream(Stream);
+  finally
+    Stream.Free;
+  end;
+end;
+
+end.

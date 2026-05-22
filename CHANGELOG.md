@@ -4,7 +4,15 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 
 
-### 0.1.5 - Unreleased
+### 0.1.6 - Unreleased
+
+- Add binary DFM reader (TPF0 format); handles all value type tags including
+  vaInt8-vaInt64, vaExtended (80-bit), vaString/vaLString/vaWString/vaUTF8String/
+  vaUString, vaIdent, vaTrue/vaFalse, vaSet, vaBinary, vaList, vaCollection.
+  16 binary reader tests.
+[#7](https://github.com/continuous-delphi/delphi-forms-parser/issues/7)
+
+### 0.1.5
 
 - Add text DFM writer with round-trip fidelity; preserves RawText for parsed
   values, produces canonical 2-space-indent output for constructed ASTs.

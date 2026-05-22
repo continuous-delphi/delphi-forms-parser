@@ -159,3 +159,40 @@ is a design invariant verified on every parse.
 - [ ] 0 warnings, 0 errors
 - [ ] All writer tests pass with zero memory leaks
 - [ ] Round-trip verified: parse(source) -> write -> equals source
+
+---
+Title: Binary DFM reader -- deserialize TPF0 format to AST
+Issue: #7
+Status: closed
+Labels: enhancement
+Body:
+Implement a binary DFM reader that deserializes the TPF0 binary format into
+the same TFormFile AST used by the text parser. Required for migrating
+legacy Delphi systems that store forms in binary format.
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.BinaryReader.pas` -- `TDfmBinaryReader` with
+  `ReadFromBytes`, `ReadFromStream`, `ReadFromFile` methods
+- [ ] `test/Test.Delphi.Forms.BinaryReader.pas` -- binary reader tests using
+  hand-crafted binary payloads
+
+## Binary format
+
+- Signature: `$FF` + `TPF0` (5 bytes)
+- Object: ClassNameLen(1) + ClassName + NameLen(1) + Name
+- Properties: NameLen(1) + Name + ValueType(1) + ValueData
+- Zero-length name terminates property list
+- Zero-length class name terminates children list
+- Value type tags: vaList=1, vaInt8=2, vaInt16=3, vaInt32=4, vaExtended=5,
+  vaString=6, vaIdent=7, vaFalse=8, vaTrue=9, vaBinary=10, vaSet=11,
+  vaLString=12, vaNil=13, vaCollection=14, vaSingle=15, vaDouble=16,
+  vaCurrency=17, vaDate=18, vaWString=19, vaInt64=20, vaUTF8String=21,
+  vaUString=22
+
+## Acceptance criteria
+
+- [ ] 0 warnings, 0 errors
+- [ ] All binary reader tests pass with zero memory leaks
+- [ ] Reads binary DFM into correct AST structure
+- [ ] Handles all value type tags
