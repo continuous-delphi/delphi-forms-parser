@@ -43,16 +43,22 @@ implementation
 
 function TDfmParser.Current: TDfmToken;
 begin
+  if FPos >= FTokens.Count then
+    raise Exception.Create('Unexpected end of DFM input');
   Result := FTokens[FPos];
 end;
 
 function TDfmParser.CurrentKind: TDfmTokenKind;
 begin
+  if FPos >= FTokens.Count then
+    raise Exception.Create('Unexpected end of DFM input');
   Result := FTokens[FPos].Kind;
 end;
 
 function TDfmParser.CurrentText: string;
 begin
+  if FPos >= FTokens.Count then
+    raise Exception.Create('Unexpected end of DFM input');
   Result := FTokens[FPos].Text;
 end;
 
@@ -75,6 +81,8 @@ end;
 
 procedure TDfmParser.Expect(Kind: TDfmTokenKind);
 begin
+  if AtEnd then
+    raise Exception.CreateFmt('Unexpected end of DFM input: expected token kind %d', [Ord(Kind)]);
   if CurrentKind <> Kind then
     raise Exception.CreateFmt('Expected token kind %d but got %d at line %d col %d', [Ord(Kind), Ord(CurrentKind), Current.Line, Current.Col]);
   Advance;

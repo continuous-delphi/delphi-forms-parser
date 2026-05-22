@@ -74,6 +74,14 @@ type
     procedure Parse_MultipleProperties;
     [Test]
     procedure Parse_RealWorldForm;
+    [Test]
+    procedure Parse_TruncatedMissingEnd;
+    [Test]
+    procedure Parse_TruncatedMissingValue;
+    [Test]
+    procedure Parse_TruncatedMissingClassName;
+    [Test]
+    procedure Parse_EmptyInput;
   end;
 
 implementation
@@ -568,6 +576,62 @@ begin
     Assert.AreEqual('TLabel', F.Root.Children[0].ClassName_);
     Assert.AreEqual('butTokenize', F.Root.Children[1].Name);
     Assert.AreEqual('TButton', F.Root.Children[1].ClassName_);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmParserTests.Parse_TruncatedMissingEnd;
+var
+  F: TFormFile;
+begin
+  // Object without closing 'end' -- should not crash
+  F := nil;
+  try
+    F := FParser.Parse('object f: TF'#13#10'  Left = 0'#13#10);
+    // Parser should handle gracefully (consume until EOF)
+    Assert.IsNotNull(F.Root);
+    Assert.AreEqual('f', F.Root.Name);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmParserTests.Parse_TruncatedMissingValue;
+var
+  F: TFormFile;
+begin
+  // Property with = but value is just 'end' keyword (parsed as identifier)
+  // Parser is lenient: treats 'end' as the value, object ends up unclosed
+  // Key assertion: no access violation, no crash
+  F := FParser.Parse('object f: TF'#13#10'  Left ='#13#10'end'#13#10);
+  try
+    Assert.IsNotNull(F.Root);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmParserTests.Parse_TruncatedMissingClassName;
+begin
+  // Object without class name -- should raise, not crash with AV
+  Assert.WillRaise(
+    procedure
+    var
+      F: TFormFile;
+    begin
+      F := FParser.Parse('object f'#13#10'end'#13#10);
+      F.Free;
+    end);
+end;
+
+procedure TDfmParserTests.Parse_EmptyInput;
+var
+  F: TFormFile;
+begin
+  F := FParser.Parse('');
+  try
+    Assert.IsNull(F.Root, 'Empty input should produce nil root');
   finally
     F.Free;
   end;

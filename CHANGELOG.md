@@ -4,6 +4,13 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 
 
+### 0.2.15
+
+- Add bounds guards to parser accessors (Current, CurrentKind, CurrentText,
+  Expect) -- raises descriptive "Unexpected end of DFM input" instead of
+  access violation on truncated input. 4 new truncated-input tests.
+[#17](https://github.com/continuous-delphi/delphi-forms-parser/issues/17)
+
 ### 0.2.14
 
 - Fix lexer unknown-character token emitting wrong character. Round-trip now

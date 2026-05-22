@@ -459,6 +459,7 @@ characters (e.g. stray `@`, `!`, `\`, `~`).
 ---
 Title: Parser crashes on truncated input -- missing AtEnd guard in Expect
 Issue: #17
+Status: closed
 Labels: bug
 Body:
 In `Delphi.Forms.Parser.pas` line 78, `Expect()` calls `CurrentKind`
