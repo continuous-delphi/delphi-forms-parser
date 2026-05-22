@@ -108,8 +108,11 @@
         </DelphiCompile>
         <DCCReference Include="..\source\Delphi.Forms.Info.pas"/>
         <DCCReference Include="..\source\Delphi.Forms.Types.pas"/>
+        <DCCReference Include="..\source\Delphi.Forms.Token.pas"/>
+        <DCCReference Include="..\source\Delphi.Forms.Lexer.pas"/>
         <DCCReference Include="Test.Delphi.Forms.Smoke.pas"/>
         <DCCReference Include="Test.Delphi.Forms.Types.pas"/>
+        <DCCReference Include="Test.Delphi.Forms.Lexer.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

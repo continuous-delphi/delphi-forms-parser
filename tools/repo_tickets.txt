@@ -58,3 +58,39 @@ writers consume. This is the foundation every subsequent phase builds on.
 - [ ] Test project compiles with 0 warnings, 0 errors
 - [ ] All type tests pass with zero memory leaks
 - [ ] Nested object trees can be constructed and freed without leaks
+
+---
+Title: Text DFM lexer -- tokenize text form files
+Issue: #4
+Status: closed
+Labels: enhancement
+Body:
+Implement a dedicated lexer for the DFM/FMX text form file format. This is
+intentionally separate from delphi-lexer because DFM treats `{ hex }` as
+binary data (not comments).
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.Token.pas` -- `TDfmTokenKind` enum and `TDfmToken` record
+- [ ] `source/Delphi.Forms.Lexer.pas` -- `TDfmLexer.Tokenize()` producing `TDfmTokenList`
+- [ ] `test/Test.Delphi.Forms.Lexer.pas` -- comprehensive lexer tests
+
+## Token kinds
+
+`dtkIdentifier`, `dtkInteger`, `dtkFloat`, `dtkString`, `dtkCharLiteral`,
+`dtkEquals`, `dtkColon`, `dtkDot`, `dtkComma`, `dtkPlus`, `dtkMinus`,
+`dtkLBracket`, `dtkRBracket`, `dtkLParen`, `dtkRParen`, `dtkLAngle`,
+`dtkRAngle`, `dtkBinaryData`, `dtkWhitespace`, `dtkEOL`, `dtkEOF`
+
+## Design invariants
+
+- Round-trip: concatenating all Token.Text reproduces original source exactly
+- Every character appears in exactly one token (no gaps, no overlaps)
+- `{ hex }` produces `dtkBinaryData`, NOT a comment token
+- Final token is always `dtkEOF`
+
+## Acceptance criteria
+
+- [ ] 0 warnings, 0 errors
+- [ ] All lexer tests pass with zero memory leaks
+- [ ] Round-trip verified on representative DFM snippets
