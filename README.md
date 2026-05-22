@@ -1,6 +1,9 @@
 # delphi-forms-parser
 
+![delphi-forms-parser logo](https://continuous-delphi.github.io/assets/logos/delphi-forms-parser-480x270.png)
+
 [![Delphi](https://img.shields.io/badge/delphi-red)](https://www.embarcadero.com/products/delphi)
+[![Coverage](assets/coverage/coverage-badge.svg)](assets/coverage/CodeCoverage_Summary.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Continuous Delphi](https://img.shields.io/badge/org-continuous--delphi-red)](https://github.com/continuous-delphi)
 
@@ -81,11 +84,21 @@ TFormFile ---> TDfmTextWriter ---> text DFM output                  |
 TFormFile ---> TDfmBinaryWriter ---> binary DFM output              |
 ```
 
-## Related projects
+---
 
-- [delphi-lexer](https://github.com/continuous-delphi/delphi-lexer) -- lexer
-  for Delphi Object Pascal source code
+## Maturity
 
-## License
+This repository is currently `incubator` and is under active development. It will graduate to `stable` once:
 
-MIT -- see [LICENSE](LICENSE).
+- At least one downstream consumer exists.
+
+Until graduation, breaking changes may occur
+
+---
+
+![continuous-delphi logo](https://continuous-delphi.github.io/assets/logos/continuous-delphi-480x270.png)
+
+## Part of Continuous Delphi
+
+This tool is part of the [Continuous-Delphi](https://github.com/continuous-delphi)
+ecosystem, dedicated to the long-term success of Delphi applications.
