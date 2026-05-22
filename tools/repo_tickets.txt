@@ -29,3 +29,32 @@ Set up the initial project structure for `delphi-forms-parser`.
 - [x] Test project compiles with 0 warnings, 0 errors on Win64 Debug
 - [x] Test runner executes and reports results
 - [x] CI pipeline runs end-to-end via `ci.bat`
+
+---
+Title: Core AST types -- TFormFile, TFormObject, TFormProperty, TFormValue
+Issue: #3
+Status: closed
+Labels: enhancement
+Body:
+Define the typed AST that all parsers (text and binary) produce and all
+writers consume. This is the foundation every subsequent phase builds on.
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.Types.pas` -- AST type definitions
+  - `TObjectKind` enum: `okObject`, `okInherited`, `okInline`
+  - `TFormValueKind` enum: `fvInteger`, `fvFloat`, `fvString`, `fvBoolean`,
+    `fvIdentifier`, `fvSet`, `fvBinary`, `fvList`, `fvCollection`
+  - `TFormValue` class with typed fields per kind and `RawText` for round-trip
+  - `TFormProperty` class with `Name` (possibly dotted) and owned `Value`
+  - `TFormObject` class with `ObjectKind`, `Name`, `ClassName_`, owned
+    `Properties` and `Children` lists
+  - `TFormFile` class owning the root `TFormObject`
+- [ ] `test/Test.Delphi.Forms.Types.pas` -- construction, ownership, memory
+  leak verification via FastMM4
+
+## Acceptance criteria
+
+- [ ] Test project compiles with 0 warnings, 0 errors
+- [ ] All type tests pass with zero memory leaks
+- [ ] Nested object trees can be constructed and freed without leaks

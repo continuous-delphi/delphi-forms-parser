@@ -15,7 +15,9 @@ uses
   {$ENDIF }
   DUnitX.TestFramework,
   Delphi.Forms.Info in '..\source\Delphi.Forms.Info.pas',
-  Test.Delphi.Forms.Smoke in 'Test.Delphi.Forms.Smoke.pas';
+  Delphi.Forms.Types in '..\source\Delphi.Forms.Types.pas',
+  Test.Delphi.Forms.Smoke in 'Test.Delphi.Forms.Smoke.pas',
+  Test.Delphi.Forms.Types in 'Test.Delphi.Forms.Types.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

@@ -107,7 +107,9 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="..\source\Delphi.Forms.Info.pas"/>
+        <DCCReference Include="..\source\Delphi.Forms.Types.pas"/>
         <DCCReference Include="Test.Delphi.Forms.Smoke.pas"/>
+        <DCCReference Include="Test.Delphi.Forms.Types.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
