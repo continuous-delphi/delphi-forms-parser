@@ -1,10 +1,87 @@
 radCallGraph 0.1.0
-Files: 2
-Nodes: 1 (1 classes, 0 standalone)
-Edges: 1
+Files: 18
+Nodes: 317 (23 classes, 6 standalone)
+Edges: 1374
 
 TDUnitXTooling (1 methods)
   ExampleSuccessfulTest
 
+TDelphiFormsParser (10 methods)
+  ParseFile, ParseText, ParseBinary, ParseBytes, WriteText, WriteBinary, BinaryToText, TextToBinary, DetectFormat, IsBinaryDfm
+
+TDfmBinaryReader (21 methods)
+  ReadByte, ReadWord, ReadInt32, ReadInt64, ReadSingle, ReadDouble, ReadCurrency, ReadShortString, ReadLString, ReadWString, ReadUTF8String, ReadUString, ReadBytes, ReadExtended80FromBytes, ReadObject, ReadValue, ReadProperties, ReadChildren, ReadFromStream, ReadFromBytes, ReadFromFile
+
+TDfmBinaryReaderTests (23 methods)
+  Setup, TearDown, AppendByte, AppendShortString, AppendBytes, BuildMinimalBinary, BuildBinaryWithProperty, Read_MinimalObject, Read_WithFFPrefix, Read_Int8Property, Read_Int16Property, Read_Int32Property, Read_StringProperty, Read_LStringProperty, Read_IdentProperty, Read_BooleanFalse, Read_BooleanTrue, Read_SetProperty, Read_BinaryProperty, Read_ListProperty, Read_NestedChild, Read_MultipleProperties, Read_UTF8StringProperty
+
+TDfmBinaryWriter (16 methods)
+  WriteByte, WriteWord, WriteInt32, WriteInt64, WriteShortString, WriteObject, WriteProperty, WriteValue, WriteIntegerValue, WriteIntegerValueWithTag, WriteStringValue, WriteStringValueWithTag, WriteFloatValueWithTag, WriteToBytes, WriteToStream, WriteToFile
+
+TDfmBinaryWriterTests (30 methods)
+  Setup, TearDown, AssertBinaryRoundTrip, Write_MinimalObject, Write_StartsWithFFTPF0, Write_Int8Property, Write_Int16Property, Write_Int32Property, Write_StringProperty, Write_BooleanProperties, Write_IdentProperty, Write_SetProperty, Write_BinaryProperty, Write_ListProperty, Write_NestedChild, Write_InheritedKind, Write_InlineKind, RoundTrip_ConstructedForm, RoundTrip_MultipleProperties, RoundTrip_PreservesInt32Tag, RoundTrip_PreservesSingleTag, RoundTrip_PreservesCurrencyTag, RoundTrip_PreservesDateTag, RoundTrip_PreservesShortStringTag, RoundTrip_PreservesLStringTag, RoundTrip_PreservesWStringTag, RoundTrip_PreservesUStringTag, RoundTrip_PreservesCollectionItemIndex, Write_SequentialIndicesWhenNotSet, RoundTrip_PreservesExtendedTag
+
+TDfmLexer (13 methods)
+  Peek, PeekAt, AtEnd, Advance, MakeToken, ReadIdentifier, ReadNumber, ReadString, ReadCharLiteral, ReadBinaryData, ReadWhitespace, ReadEOL, Tokenize
+
+TDfmLexerTests (35 methods)
+  Setup, TearDown, Tok, AssertRoundTrip, Empty_ProducesEOF, Identifier_Simple, Identifier_WithUnderscore, Identifier_Keywords, Integer_Decimal, Integer_Hex, Integer_NegativeIsTwo, Float_Simple, Float_Exponent, String_Simple, String_EscapedQuote, String_Empty, CharLiteral_Decimal, CharLiteral_Hex, BinaryData_SingleLine, BinaryData_MultiLine, Symbols_AllSingle, Whitespace_SpacesAndTabs, EOL_LF, EOL_CRLF, EOL_CR, LineTracking, StartOffset_Tracking, RoundTrip_SimpleForm, RoundTrip_BinaryData, RoundTrip_StringConcat, RoundTrip_SetValue, RoundTrip_DesignSize, AlwaysEndsWithEOF, UnknownChar_EmitsCorrectText, UnknownChar_RoundTrip
+
+TDfmParser (19 methods)
+  Current, CurrentKind, CurrentText, AtEnd, Advance, SkipTrivia, Expect, MatchIdent, IsObjectKeyword, ParseObject, ParseProperty, ParseDottedName, ParseValue, ParseStringValue, ParseSetValue, ParseListValue, ParseCollectionValue, ParseBinaryValue, Parse
+
+TDfmParserTests (33 methods)
+  Setup, TearDown, Parse_MinimalForm, Parse_IntegerProperty, Parse_NegativeInteger, Parse_HexInteger, Parse_FloatProperty, Parse_NegativeFloat, Parse_StringProperty, Parse_StringWithEscapedQuote, Parse_StringConcat, Parse_StringWithCharLiteral, Parse_BooleanTrue, Parse_BooleanFalse, Parse_IdentifierValue, Parse_DottedPropertyName, Parse_DottedIdentifierValue, Parse_SetValue, Parse_EmptySet, Parse_BinaryData, Parse_ListValue, Parse_NestedObjects, Parse_InheritedForm, Parse_InlineForm, Parse_CollectionValue, Parse_TypedCollectionItems, Parse_MixedCollectionItems, Parse_MultipleProperties, Parse_RealWorldForm, Parse_TruncatedMissingEnd, Parse_TruncatedMissingValue, Parse_TruncatedMissingClassName, Parse_EmptyInput
+
+TDfmTextWriter (11 methods)
+  IndentStr, ObjectKindToStr, WriteObject, WriteProperty, WriteValue, WriteStringValue, WriteSetValue, WriteBinaryValue, WriteListValue, WriteCollectionValue, Create
+
+TDfmTextWriterTests (27 methods)
+  Setup, TearDown, AssertRoundTrip, Write_MinimalForm, Write_IntegerProperty, Write_HexIntegerPreservesRawText, Write_NegativeInteger, Write_FloatProperty, Write_StringProperty, Write_BooleanProperties, Write_IdentifierProperty, Write_DottedPropertyName, Write_SetProperty, Write_EmptySet, Write_NestedObjects, Write_InheritedForm, Write_InlineForm, Write_MultipleProperties, RoundTrip_SimpleForm, RoundTrip_NestedObjects, RoundTrip_AllValueTypes, RoundTrip_ListValue, RoundTrip_BinaryData, RoundTrip_CollectionValue, RoundTrip_RealWorldForm, Write_Canonical_FromConstructedAST, RoundTrip_TypedCollectionItems
+
+TFormFile (2 methods)
+  Create, Destroy
+
+TFormFileTests (3 methods)
+  FormFile_OwnsRoot, FormFile_NilRoot_NoLeak, FormFile_FullTree_NoLeaks
+
+TFormObject (2 methods)
+  Create, Destroy
+
+TFormObjectTests (6 methods)
+  Object_DefaultsToOkObject, Object_StoresNameAndClassName, Object_OwnsPropertiesAndChildren, Object_NestedChildren_NoLeaks, Object_InheritedKind, Object_InlineKind
+
+TFormProperty (2 methods)
+  Create, Destroy
+
+TFormPropertyTests (2 methods)
+  Property_OwnsValue, Property_StoresDottedName
+
+TFormValue (2 methods)
+  Create, Destroy
+
+TFormValueTests (10 methods)
+  IntegerValue_StoresKindAndValue, FloatValue_StoresKindAndValue, StringValue_StoresKindAndValue, BooleanValue_StoresKindAndValue, IdentifierValue_StoresKindAndValue, SetValue_StoresItems, BinaryValue_StoresDataAndHex, ListValue_CreatesOwnedList, CollectionValue_CreatesOwnedList, RawText_PreservedOnValue
+
+TGoldenTests (22 methods)
+  Setup, GoldenPath, AssertTextRoundTrip, Golden_Minimal, Golden_Nested, Golden_AllValues, Golden_InheritedForm, Golden_Collections, Golden_BinaryData, Golden_Minimal_Structure, Golden_Nested_Structure, Golden_AllValues_Structure, Golden_FmxForm, Golden_FmxForm_Structure, Golden_Empty, Golden_Empty_Structure, Golden_DeepNesting, Golden_DeepNesting_Structure, Golden_LargeBinary, Golden_LargeBinary_Structure, Golden_TypedCollections, Golden_TypedCollections_Structure
+
+TRoundTripTests (11 methods)
+  TextToText_Minimal, TextToText_AllValueTypes, TextToBinaryToText_Stable, BinaryToBinaryRoundTrip, TextToBinaryToText_NestedForm, TextToBinaryToText_BoolAndIdent, TextToBinaryToText_SetProperty, DetectFormat_TextInput, DetectFormat_BinaryInput, ParseBytes_AutoDetectsText, ParseBytes_AutoDetectsBinary
+
+TestFixture (10 methods)
+  BuildMinimalBinary, BuildBinaryWithProperty, AppendByte, AppendShortString, AppendBytes, AssertBinaryRoundTrip, GoldenPath, AssertTextRoundTrip, Tok, AssertRoundTrip
+
+Standalone routines: 6
+
 Top callers:
-  TDUnitXTooling.ExampleSuccessfulTest  1 calls
+  TDfmBinaryReader.ReadValue  56 calls
+  TDfmParser.ParseStringValue  49 calls
+  TDfmLexer.Tokenize  47 calls
+  TDfmParser.ParseValue  46 calls
+  TDfmParser.ParseCollectionValue  36 calls
+  TDfmLexer.ReadNumber  35 calls
+  TDfmParser.ParseObject  31 calls
+  TDfmBinaryWriter.WriteValue  25 calls
+  TFormFileTests.FormFile_FullTree_NoLeaks  23 calls
+  TDfmParser.ParseSetValue  21 calls
