@@ -94,3 +94,38 @@ binary data (not comments).
 - [ ] 0 warnings, 0 errors
 - [ ] All lexer tests pass with zero memory leaks
 - [ ] Round-trip verified on representative DFM snippets
+
+---
+Title: Text DFM parser -- recursive descent tokens to AST
+Issue: #5
+Status: closed
+Labels: enhancement
+Body:
+Implement a recursive-descent parser that converts TDfmTokenList into a
+TFormFile AST. Handles all DFM constructs: object/inherited/inline blocks,
+properties with dotted names, and all value types (integers, floats, strings,
+booleans, identifiers, sets, binary data, parenthesized lists, collections).
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.Parser.pas` -- `TDfmParser.Parse(Source): TFormFile`
+- [ ] `test/Test.Delphi.Forms.Parser.pas` -- parser tests covering all value
+  types, nested objects, inherited/inline forms, dotted property names,
+  string concatenation with `+` and `#` char literals
+
+## Grammar
+
+```
+FormFile       = Object EOF
+Object         = ObjectKw Ident ':' Ident EOL PropertyOrChild* 'end'
+ObjectKw       = 'object' | 'inherited' | 'inline'
+Property       = DottedName '=' Value
+Value          = NumericValue | StringValue | BoolValue | IdentValue
+               | SetValue | BinaryValue | ListValue | CollectionValue
+```
+
+## Acceptance criteria
+
+- [ ] 0 warnings, 0 errors
+- [ ] All parser tests pass with zero memory leaks
+- [ ] Parses representative DFM snippets into correct AST structure

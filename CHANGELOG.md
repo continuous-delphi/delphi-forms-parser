@@ -4,7 +4,13 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 
 
-### 0.1.3 - Unreleased
+### 0.1.4 - Unreleased
+
+- Add recursive-descent text DFM parser; all value types, nested objects,
+  inherited/inline forms, collections, string concatenation. 25 parser tests.
+[#5](https://github.com/continuous-delphi/delphi-forms-parser/issues/5)
+
+### 0.1.3
 
 - Add text DFM lexer with 21 token kinds and round-trip fidelity; `{ hex }`
   tokenized as binary data, not comments. 29 lexer tests.
