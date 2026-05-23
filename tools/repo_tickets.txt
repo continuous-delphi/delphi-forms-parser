@@ -1763,6 +1763,7 @@ function GetAncestorByClass(Obj: TFormObject; const ClassName: string): TFormObj
 ---
 Title: AST navigation helpers (Delphi.Forms.Navigation)
 Issue: #48
+Status: closed
 Labels: enhancement
 Body:
 Consumers frequently need to locate specific objects or properties in

@@ -120,6 +120,7 @@
         <DCCReference Include="..\source\Delphi.Forms.Normalize.pas"/>
         <DCCReference Include="..\source\Delphi.Forms.Visitor.pas"/>
         <DCCReference Include="..\source\Delphi.Forms.Path.pas"/>
+        <DCCReference Include="..\source\Delphi.Forms.Navigation.pas"/>
         <DCCReference Include="..\source\Delphi.Forms.pas"/>
         <DCCReference Include="Test.Delphi.Forms.Smoke.pas"/>
         <DCCReference Include="Test.Delphi.Forms.Types.pas"/>
@@ -134,6 +135,7 @@
         <DCCReference Include="Test.Delphi.Forms.Normalize.pas"/>
         <DCCReference Include="Test.Delphi.Forms.Visitor.pas"/>
         <DCCReference Include="Test.Delphi.Forms.Path.pas"/>
+        <DCCReference Include="Test.Delphi.Forms.Navigation.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -4,6 +4,15 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.8
 
+### 0.8.48
+
+- Add AST navigation helpers in `Delphi.Forms.Navigation`:
+  `FindObjectByName`, `FindObjectsByClass`, `FindProperty`,
+  `FindPropertyByPath`, `EnumAllObjects`, `EnumAllProperties`.
+  All case-insensitive, nil-safe. `FindPropertyByPath` resolves dotted
+  paths through both property names and child object navigation.
+[#48](https://github.com/continuous-delphi/delphi-forms-parser/issues/48)
+
 ### 0.8.47
 
 - Add path utility functions in `Delphi.Forms.Path`: `GetObjectPath`,
