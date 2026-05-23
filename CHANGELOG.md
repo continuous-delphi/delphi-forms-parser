@@ -2,7 +2,12 @@
 Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 
 ---
+## 0.7
+
+
 ## 0.6
+
+- Utilities thinned out to rework to extract logic into class library for reusability
 
 ### 0.6.36
 
