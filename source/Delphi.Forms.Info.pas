@@ -3,7 +3,7 @@ unit Delphi.Forms.Info;
 interface
 
 const
-  Version = '0.5.28.0';
+  Version = '0.5.29.0';
 
 implementation
 

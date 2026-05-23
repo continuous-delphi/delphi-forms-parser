@@ -80,6 +80,8 @@ type
     procedure Write_SequentialIndicesWhenNotSet;
     [Test]
     procedure Write_ShortStringOver255_Raises;
+    [Test]
+    procedure RoundTrip_PreservesVaNil;
   end;
 
 implementation

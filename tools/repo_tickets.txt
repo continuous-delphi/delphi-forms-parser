@@ -823,3 +823,178 @@ Parse failures: 0
 - [ ] Parse failures logged and counted, do not abort scan
 - [ ] JSON output is valid and parseable
 - [ ] Builds with 0 warnings, 0 errors
+
+---
+Title: Fix empty list and empty collection writer output (B-1, B-2)
+Issue: #26
+Status: closed
+Labels: bug
+Body:
+From code review `forms-parser-review.md`:
+
+**B-1:** `WriteListValue` only emits `)` inside the for loop on the last
+iteration. If `Value.ListItems.Count = 0`, the loop never runs and the
+output is `(CRLF` with no closing paren.
+
+**B-2:** Same pattern in `WriteCollectionValue`. Empty collection produces
+`<CRLF` with no closing `>`.
+
+Both violate I-1 (text round-trip fidelity) for empty list/collection values.
+
+## Scope
+
+- [ ] Fix `WriteListValue` to handle empty list
+- [ ] Fix `WriteCollectionValue` to handle empty collection
+- [ ] Add tests for empty list and empty collection properties
+
+## Acceptance criteria
+
+- [ ] Empty list `()` round-trips correctly
+- [ ] Empty collection `<>` round-trips correctly
+- [ ] All existing tests still pass
+
+---
+Title: Fix vaNil binary round-trip (B-3)
+Issue: #27
+Labels: bug
+Body:
+From code review `forms-parser-review.md`:
+
+The binary reader stores `OriginalValueType := vaNil` for nil values,
+encoding them as `fvIdentifier` with `IdentValue = 'nil'`. The binary
+writer dispatches on `Value.Kind = fvIdentifier` and writes `vaIdent` +
+ShortString "nil" (5 bytes) instead of the original `vaNil` (1 byte).
+
+This violates I-2 (binary round-trip fidelity).
+
+## Scope
+
+- [ ] In `WriteValue` fvIdentifier case, check `OriginalValueType = vaNil`
+  and emit `WriteByte(vaNil)` directly
+- [ ] Add binary round-trip test with vaNil value
+
+## Acceptance criteria
+
+- [ ] vaNil property values round-trip as 1 byte, not 5 bytes
+- [ ] All existing tests still pass
+
+---
+Title: Remove redundant BinaryHex field (B-4)
+Issue: #28
+Labels: enhancement
+Body:
+From code review `forms-parser-review.md`:
+
+`ParseBinaryValue` sets both `RawText` (full `{hex}` text) and `BinaryHex`
+(hex content between braces). The text writer only checks `RawText`, never
+`BinaryHex`. The two fields are redundant for parsed values.
+
+## Scope
+
+- [ ] Remove `BinaryHex` field from `TFormValue`
+- [ ] Remove `BinaryHex` usage from parser and any tests that reference it
+- [ ] Verify round-trip still works (RawText covers the same data)
+
+## Acceptance criteria
+
+- [ ] Field removed, no compilation errors
+- [ ] All tests still pass
+
+---
+Title: Add source position tracking to AST nodes (A-1)
+Issue: #29
+Labels: enhancement
+Body:
+From code review `forms-parser-review.md`:
+
+AST nodes (`TFormObject`, `TFormProperty`, `TFormValue`) carry no source
+position information. Tokens have `Line`, `Col`, `StartOffset` but this
+information is lost when the parser builds the AST.
+
+This is the single most consequential gap for downstream integration.
+Tools like radRefactor need to know "the OnClick property at line 47 col 12"
+to edit specific source ranges.
+
+## Approach
+
+Add `StartOffset` and `EndOffset` (or token range indices) to each AST
+node. The parser sets these from the tokens it consumes.
+
+## Acceptance criteria
+
+- [ ] TFormObject, TFormProperty, and TFormValue carry source position info
+- [ ] Parser populates positions from tokens during parsing
+- [ ] All existing tests still pass
+
+---
+Title: Tighten round-trip invariant to specify canonical input (A-2)
+Issue: #30
+Labels: documentation
+Body:
+From code review `forms-parser-review.md`:
+
+I-1 states "byte-for-byte" round-trip without qualification. In practice,
+it only holds for canonically-formatted DFM files (IDE-emitted, 2-space
+indent, CRLF, standard spacing). Hand-edited DFMs with different
+indentation or whitespace will be normalized.
+
+## Scope
+
+- [ ] Update I-1 in `docs/dev-note--design-invariants.md` to say
+  "for canonically-formatted (IDE-emitted) DFM files"
+- [ ] Add note explaining what canonical formatting means
+
+## Acceptance criteria
+
+- [ ] Invariant text accurately reflects actual behavior
+
+---
+Title: Add Win1252 ANSI fallback for text DFM file reading
+Issue: #31
+Labels: enhancement
+Body:
+When `ParseFile` or `ParseBytes` decodes a text DFM as UTF-8 and the file
+contains invalid UTF-8 byte sequences (common in legacy ANSI-encoded DFMs
+from Delphi 7-2007), `TEncoding.UTF8.GetString` raises `EEncodingError`.
+
+Instead of failing, the default path should catch `EEncodingError` and
+retry with Windows-1252 (codepage 1252) encoding. This matches the
+pattern used in delphi-lexer's `TLexerUtils.ReadAllText`:
+
+```pascal
+try
+  Result := TFile.ReadAllText(FileName, Encoding);
+except
+  on E: EEncodingError do
+  begin
+    Win1252 := TMBCSEncoding.Create(1252, False);
+    try
+      Result := TFile.ReadAllText(FileName, Win1252);
+    finally
+      Win1252.Free;
+    end;
+  end;
+end;
+```
+
+This eliminates silent corruption (O-2 from code review) and removes
+the requirement for users to know their DFM encoding upfront. The
+explicit `TEncoding` overloads remain available for full control.
+
+## Scope
+
+- [ ] Add ANSI fallback to `ParseBytes` (no-encoding overload): catch
+  `EEncodingError` from UTF-8 decode and retry with Win1252
+- [ ] Add ANSI fallback to `ParseFile` (no-encoding overload) via the
+  same mechanism
+- [ ] Consider adding a `SkipAnsiFallback` parameter or keeping it
+  always-on for the default overloads (explicit encoding overloads
+  never fall back)
+- [ ] Add test with bytes that are valid Win1252 but invalid UTF-8
+
+## Acceptance criteria
+
+- [ ] Legacy ANSI DFM files with extended characters parse without error
+- [ ] UTF-8 DFM files continue to parse correctly
+- [ ] Explicit `ParseFile(name, TEncoding.UTF8)` does NOT fall back
+- [ ] All existing tests still pass

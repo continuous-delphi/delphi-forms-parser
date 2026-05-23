@@ -177,6 +177,11 @@ var
   I: Integer;
   InnerIndent: string;
 begin
+  if Value.ListItems.Count = 0 then
+  begin
+    Result := '()';
+    Exit;
+  end;
   InnerIndent := StringOfChar(' ', (FIndent + 1) * 2);
   Result := '(' + FLineEnding;
   for I := 0 to Value.ListItems.Count - 1 do
@@ -195,6 +200,11 @@ var
   ItemIndent: string;
   Item: TFormObject;
 begin
+  if Value.CollectionItems.Count = 0 then
+  begin
+    Result := '<>';
+    Exit;
+  end;
   InnerIndent := StringOfChar(' ', (FIndent + 1) * 2);
   ItemIndent := StringOfChar(' ', (FIndent + 2) * 2);
   Result := '<' + FLineEnding;

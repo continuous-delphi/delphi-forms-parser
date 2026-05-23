@@ -71,6 +71,10 @@ type
     procedure Write_Canonical_FromConstructedAST;
     [Test]
     procedure RoundTrip_TypedCollectionItems;
+    [Test]
+    procedure RoundTrip_EmptyList;
+    [Test]
+    procedure RoundTrip_EmptyCollection;
   end;
 
 implementation
@@ -385,6 +389,22 @@ begin
     '    item TToolButton'#13#10 +
     '      Caption = ''Save'''#13#10 +
     '    end>'#13#10 +
+    'end'#13#10);
+end;
+
+procedure TDfmTextWriterTests.RoundTrip_EmptyList;
+begin
+  AssertRoundTrip(
+    'object f: TF'#13#10 +
+    '  Items = ()'#13#10 +
+    'end'#13#10);
+end;
+
+procedure TDfmTextWriterTests.RoundTrip_EmptyCollection;
+begin
+  AssertRoundTrip(
+    'object f: TF'#13#10 +
+    '  Columns = <>'#13#10 +
     'end'#13#10);
 end;
 

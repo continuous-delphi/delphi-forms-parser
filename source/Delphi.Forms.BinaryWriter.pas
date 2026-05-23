@@ -267,8 +267,13 @@ begin
     end;
     fvIdentifier:
     begin
-      WriteByte(vaIdent);
-      WriteShortString(Value.IdentValue);
+      if Value.OriginalValueType = vaNil then
+        WriteByte(vaNil)
+      else
+      begin
+        WriteByte(vaIdent);
+        WriteShortString(Value.IdentValue);
+      end;
     end;
     fvSet:
     begin

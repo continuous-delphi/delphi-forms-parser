@@ -4,6 +4,11 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.5
 
+### 0.5.29
+
+- Fix empty list `()` and empty collection `<>` writer output. Previously
+  produced unterminated `(` or `<` with no closing delimiter.
+[#26](https://github.com/continuous-delphi/delphi-forms-parser/issues/26)
 
 ## 0.4
 
