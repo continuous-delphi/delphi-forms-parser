@@ -856,6 +856,7 @@ Both violate I-1 (text round-trip fidelity) for empty list/collection values.
 ---
 Title: Fix vaNil binary round-trip (B-3)
 Issue: #27
+Status: closed
 Labels: bug
 Body:
 From code review `forms-parser-review.md`:

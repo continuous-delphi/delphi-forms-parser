@@ -840,6 +840,15 @@ begin
     Exception);
 end;
 
+procedure TDfmBinaryWriterTests.RoundTrip_PreservesVaNil;
+var
+  ValBytes: TBytes;
+begin
+  // vaNil is a single byte (tag 13), no payload
+  ValBytes := TBytes.Create(vaNil);
+  AssertBinaryBytesRoundTrip(BuildBinaryWithPropValue('PopupMenu', ValBytes), FReader, FWriter);
+end;
+
 procedure TDfmBinaryWriterTests.RoundTrip_PreservesExtendedTag;
 var
   Data: TBytes;

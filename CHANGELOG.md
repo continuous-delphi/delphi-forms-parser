@@ -4,6 +4,12 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.5
 
+### 0.5.30
+
+- Fix vaNil binary round-trip. Writer now emits single `vaNil` byte (1 byte)
+  instead of `vaIdent` + "nil" (5 bytes) when `OriginalValueType = vaNil`.
+[#27](https://github.com/continuous-delphi/delphi-forms-parser/issues/27)
+
 ### 0.5.29
 
 - Fix empty list `()` and empty collection `<>` writer output. Previously
