@@ -4,6 +4,14 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.6
 
+### 0.6.35
+
+- Add `TFormJsonOptions` set to `Delphi.Forms.JSON`: `joIncludeValues`,
+  `joIncludePositions`, `joPrettyPrint`, `joIncludeRawText`. Default is
+  `[joIncludeValues, joPrettyPrint]`. New `FormFileToJSONString` convenience.
+  TreeDump updated with `--compact`, `--positions`, `--raw-text` CLI flags.
+[#34](https://github.com/continuous-delphi/delphi-forms-parser/issues/34)
+
 ### 0.6.34
 
 - Extract AST JSON serialization to `Delphi.Forms.JSON.pas` library unit.

@@ -101,6 +101,9 @@ begin
   WriteLn('Options:');
   WriteLn('  --format:<name>       Output format: text (default) or json');
   WriteLn('  --no-values           Omit property values, show only names and types');
+  WriteLn('  --compact             JSON: compact output (no indentation)');
+  WriteLn('  --positions           JSON: include sourceStart/sourceEnd offsets');
+  WriteLn('  --raw-text            JSON: include rawText field on values');
   WriteLn('  --round-trip          Verify text round-trip (parse -> write == original)');
   WriteLn('  -?, --help            Show this help and exit');
   WriteLn('  -v, --version         Show version and exit');
@@ -113,7 +116,11 @@ var
   FileName: string;
   ShowValues: Boolean;
   DoRoundTrip: Boolean;
+  DoCompact: Boolean;
+  DoPositions: Boolean;
+  DoRawText: Boolean;
   OutputFmt: TOutputFormat;
+  JsonOpts: TFormJsonOptions;
   F: TFormFile;
   Data: TBytes;
   DfmFmt: TDfmFormat;
@@ -131,6 +138,9 @@ begin
   FileName := '';
   ShowValues := True;
   DoRoundTrip := False;
+  DoCompact := False;
+  DoPositions := False;
+  DoRawText := False;
   OutputFmt := ofText;
   FmtStr := '';
 
@@ -151,6 +161,12 @@ begin
       ShowValues := False
     else if SameText(Arg, '--round-trip') then
       DoRoundTrip := True
+    else if SameText(Arg, '--compact') then
+      DoCompact := True
+    else if SameText(Arg, '--positions') then
+      DoPositions := True
+    else if SameText(Arg, '--raw-text') then
+      DoRawText := True
     else if SameText(Copy(Arg, 1, 9), '--format:') then
       FmtStr := Copy(Arg, 10, MaxInt)
     else if (Arg <> '') and (Arg[1] = '-') then
@@ -257,6 +273,17 @@ begin
       end;
       ofJson:
       begin
+        // Build JSON options from CLI flags
+        JsonOpts := [];
+        if ShowValues then
+          Include(JsonOpts, joIncludeValues);
+        if not DoCompact then
+          Include(JsonOpts, joPrettyPrint);
+        if DoPositions then
+          Include(JsonOpts, joIncludePositions);
+        if DoRawText then
+          Include(JsonOpts, joIncludeRawText);
+
         JsonRoot := TJSONObject.Create;
         try
           JsonRoot.AddPair('formatVersion', FormatVersion);
@@ -265,14 +292,17 @@ begin
             JsonRoot.AddPair('format', 'binary')
           else
             JsonRoot.AddPair('format', 'text');
-          JsonRoot.AddPair('root', FormObjectToJSON(F.Root));
+          JsonRoot.AddPair('root', FormObjectToJSON(F.Root, JsonOpts));
           JsonSummary := TJSONObject.Create;
           JsonSummary.AddPair('properties', TJSONNumber.Create(F.Root.Properties.Count));
           JsonSummary.AddPair('children', TJSONNumber.Create(F.Root.Children.Count));
           if RoundTripResult <> '' then
             JsonSummary.AddPair('roundTrip', RoundTripResult);
           JsonRoot.AddPair('summary', JsonSummary);
-          WriteLn(JsonRoot.Format(2));
+          if joPrettyPrint in JsonOpts then
+            WriteLn(JsonRoot.Format(2))
+          else
+            WriteLn(JsonRoot.ToJSON);
         finally
           JsonRoot.Free;
         end;

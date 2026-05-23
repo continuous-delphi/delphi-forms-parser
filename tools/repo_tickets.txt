@@ -1075,3 +1075,55 @@ FormStats CLI.
 - [ ] `ToJSON` produces valid JSON matching current FormStats JSON output
 - [ ] Batch overload aggregates statistics across multiple forms
 - [ ] All existing tests still pass
+
+---
+Title: Add JSON output options to Delphi.Forms.JSON
+Issue: #34
+Status: closed
+Labels: enhancement
+Body:
+The library JSON serialization currently always includes values and always
+pretty-prints. Add an options set so consumers can control what is included.
+
+## Design
+
+```pascal
+TFormJsonOption = (joIncludeValues, joIncludePositions, joPrettyPrint, joIncludeRawText);
+TFormJsonOptions = set of TFormJsonOption;
+
+const
+  DefaultJsonOptions = [joIncludeValues, joPrettyPrint];
+```
+
+- `joIncludeValues` -- include the `value` field on properties (default on)
+- `joIncludePositions` -- include `sourceStart`/`sourceEnd` on objects,
+  properties, and values (default off, useful for tooling/IDE integration)
+- `joPrettyPrint` -- Format(2) vs compact ToJSON (default on)
+- `joIncludeRawText` -- include `rawText` field on values that have it
+  (default off, useful for debugging round-trip issues)
+
+## Library API changes
+
+- Add `Options: TFormJsonOptions = DefaultJsonOptions` parameter to
+  `FormFileToJSON`, `FormObjectToJSON`, `FormPropertyToJSON`
+- Add `FormFileToJSONString(FormFile; Options): string` convenience
+  that handles Format vs ToJSON based on joPrettyPrint
+
+## TreeDump CLI mapping
+
+```
+--format:json                 [joIncludeValues, joPrettyPrint]
+--format:json --no-values     [joPrettyPrint]
+--format:json --compact       [joIncludeValues]
+--format:json --positions     [joIncludeValues, joPrettyPrint, joIncludePositions]
+--format:json --raw-text      [joIncludeValues, joPrettyPrint, joIncludeRawText]
+```
+
+## Acceptance criteria
+
+- [ ] Default behavior unchanged (joIncludeValues + joPrettyPrint)
+- [ ] joIncludePositions adds sourceStart/sourceEnd to JSON nodes
+- [ ] joPrettyPrint controls formatted vs compact output
+- [ ] joIncludeRawText adds rawText field where available
+- [ ] TreeDump CLI flags map to options correctly
+- [ ] All existing tests still pass
