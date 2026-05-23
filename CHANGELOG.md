@@ -4,6 +4,16 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.7
 
+### 0.7.39
+
+- Add structured diagnostics for batch processing. `Delphi.Forms.Diagnostics`
+  unit with `TFormDiagnostic`, `TParseResult`, and 8 diagnostic codes
+  (DFM001-DFM008). `ParseTextWithDiagnostics`, `ParseBinaryWithDiagnostics`,
+  `ParseFileWithDiagnostics`, `ParseBytesWithDiagnostics` on facade. Parser
+  recovers from non-fatal errors and collects multiple diagnostics per parse.
+  Existing exception-based API unchanged.
+[#36](https://github.com/continuous-delphi/delphi-forms-parser/issues/36)
+
 
 ## 0.6
 

@@ -7,6 +7,7 @@ uses
   System.Classes,
   System.IOUtils,
   Delphi.Forms.Types,
+  Delphi.Forms.Diagnostics,
   Delphi.Forms.Parser,
   Delphi.Forms.TextWriter,
   Delphi.Forms.BinaryReader,
@@ -26,6 +27,11 @@ type
     class function ParseBinary(const Data: TBytes): TFormFile;
     class function ParseBytes(const Data: TBytes): TFormFile; overload;
     class function ParseBytes(const Data: TBytes; Encoding: TEncoding): TFormFile; overload;
+
+    class function ParseTextWithDiagnostics(const Source: string): TParseResult;
+    class function ParseBinaryWithDiagnostics(const Data: TBytes): TParseResult;
+    class function ParseFileWithDiagnostics(const FileName: string): TParseResult;
+    class function ParseBytesWithDiagnostics(const Data: TBytes): TParseResult;
 
     class function WriteText(FormFile: TFormFile): string;
     class function WriteBinary(FormFile: TFormFile): TBytes;
@@ -164,6 +170,80 @@ begin
     Result := Reader.ReadFromBytes(Data);
   finally
     Reader.Free;
+  end;
+end;
+
+class function TDelphiFormsParser.ParseTextWithDiagnostics(const Source: string): TParseResult;
+var
+  Parser: TDfmParser;
+begin
+  Parser := TDfmParser.Create;
+  try
+    Result := Parser.ParseWithDiagnostics(Source);
+  finally
+    Parser.Free;
+  end;
+end;
+
+class function TDelphiFormsParser.ParseBinaryWithDiagnostics(const Data: TBytes): TParseResult;
+var
+  Reader: TDfmBinaryReader;
+begin
+  Reader := TDfmBinaryReader.Create;
+  try
+    Result := Reader.ReadFromBytesWithDiagnostics(Data);
+  finally
+    Reader.Free;
+  end;
+end;
+
+class function TDelphiFormsParser.ParseFileWithDiagnostics(const FileName: string): TParseResult;
+var
+  Data: TBytes;
+begin
+  Data := TFile.ReadAllBytes(FileName);
+  Result := ParseBytesWithDiagnostics(Data);
+end;
+
+class function TDelphiFormsParser.ParseBytesWithDiagnostics(const Data: TBytes): TParseResult;
+var
+  Enc: TEncoding;
+  Preamble: TBytes;
+  Offset: Integer;
+  Source: string;
+  Win1252: TEncoding;
+begin
+  if IsBinaryDfm(Data) then
+    Result := ParseBinaryWithDiagnostics(Data)
+  else
+  begin
+    Enc := DetectTextEncoding(Data);
+    Preamble := Enc.GetPreamble;
+    Offset := Length(Preamble);
+    if (Offset > 0) and (Length(Data) >= Offset) then
+    begin
+      var Match := True;
+      for var I := 0 to Offset - 1 do
+        if Data[I] <> Preamble[I] then begin Match := False; Break; end;
+      if not Match then
+        Offset := 0;
+    end
+    else
+      Offset := 0;
+    try
+      Source := Enc.GetString(Data, Offset, Length(Data) - Offset);
+    except
+      on E: EEncodingError do
+      begin
+        Win1252 := TMBCSEncoding.Create(1252, False);
+        try
+          Source := Win1252.GetString(Data);
+        finally
+          Win1252.Free;
+        end;
+      end;
+    end;
+    Result := ParseTextWithDiagnostics(Source);
   end;
 end;
 

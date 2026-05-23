@@ -1128,3 +1128,154 @@ const
 - [ ] joIncludeRawText adds rawText field where available
 - [ ] TreeDump CLI flags map to options correctly
 - [ ] All existing tests still pass
+
+---
+Title: Add form normalization with configurable rules (Delphi.Forms.Normalize)
+Issue: #35
+Labels: enhancement
+Body:
+Add a library unit that removes IDE-generated noise properties from a
+`TFormFile` AST before writing. These properties cause spurious diffs
+across developer machines and Delphi versions without affecting runtime
+behavior.
+
+## Design
+
+```pascal
+TFormNormalizeRule = (
+  nrRemoveExplicitBounds,    // ExplicitLeft, ExplicitTop, ExplicitWidth, ExplicitHeight
+  nrRemoveTextHeight,        // TextHeight (font metric cached by IDE, varies by machine)
+  nrRemoveDesignSize         // DesignSize (designer-only, not runtime)
+);
+TFormNormalizeRules = set of TFormNormalizeRule;
+
+const
+  DefaultNormalizeRules = [nrRemoveExplicitBounds, nrRemoveTextHeight, nrRemoveDesignSize];
+
+procedure NormalizeForm(FormFile: TFormFile; Rules: TFormNormalizeRules = DefaultNormalizeRules);
+```
+
+## Rules
+
+### nrRemoveExplicitBounds (default on)
+Remove `ExplicitLeft`, `ExplicitTop`, `ExplicitWidth`, `ExplicitHeight`
+from all objects. These are IDE designer state properties that change
+every time a form is opened in different IDE versions or screen
+configurations. They have no effect on runtime behavior.
+
+### nrRemoveTextHeight (default on)
+Remove `TextHeight` from all objects. This is a font metric cached by
+the IDE that varies between machines based on installed fonts and DPI
+settings. The IDE recalculates it on open.
+
+### nrRemoveDesignSize (default on)
+Remove `DesignSize` from all objects. This is the designer canvas size,
+only relevant to the form designer. Has no runtime effect.
+
+## Scope exclusions
+
+The following are explicitly **not** included:
+- **DPI properties** (`PixelsPerInch`, `Scaled`) -- thorny cross-version
+  compatibility issues; removing these can change runtime behavior
+- **Float precision normalization** -- breaks round-trip fidelity and
+  risks rounding errors
+- **Component reordering** -- can change tab order and other
+  index-dependent runtime behavior
+- **Default-value property removal** -- requires knowledge of each
+  component class's defaults, which varies by Delphi version; deferred
+  to a future ticket with a class-registry approach
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.Normalize.pas` with `NormalizeForm` procedure
+- [ ] Operates on `TFormFile` AST in-place (removes matching properties)
+- [ ] Recursive -- processes root and all nested children
+- [ ] Add unit to test project .dpr and .dproj
+- [ ] Add tests for each rule independently and combined
+- [ ] Add `--normalize` flag to TreeDump for quick verification
+
+## Acceptance criteria
+
+- [ ] ExplicitLeft/Top/Width/Height removed from all levels
+- [ ] TextHeight removed from all levels
+- [ ] DesignSize removed from all levels
+- [ ] Rules are individually toggleable via the set
+- [ ] Non-matching properties are untouched
+- [ ] All existing tests still pass
+
+---
+Title: Structured diagnostics for batch processing
+Issue: #36
+Status: closed
+Labels: enhancement
+Body:
+The parser currently reports errors via exceptions with line/col embedded
+in the message string. For batch analysis across large codebases,
+structured diagnostics with codes and severities are substantially more
+useful than exception messages. Allows aggregation, filtering, and
+machine-readable error reports.
+
+## Design
+
+```pascal
+TFormDiagnosticSeverity = (dsError, dsWarning, dsInfo);
+
+TFormDiagnostic = record
+  Severity: TFormDiagnosticSeverity;
+  Line: Integer;
+  Col: Integer;
+  Message: string;
+  Code: string; // e.g. 'DFM001'
+end;
+
+TParseResult = record
+  Form: TFormFile;
+  Diagnostics: TArray<TFormDiagnostic>;
+  Success: Boolean;
+end;
+
+class function ParseTextWithDiagnostics(const Source: string): TParseResult;
+class function ParseBinaryWithDiagnostics(const Data: TBytes): TParseResult;
+class function ParseFileWithDiagnostics(const FileName: string): TParseResult;
+```
+
+## Diagnostic codes (initial set)
+
+| Code | Severity | Description |
+|------|----------|-------------|
+| DFM001 | Error | Unexpected end of input |
+| DFM002 | Error | Expected token not found |
+| DFM003 | Error | Invalid value syntax |
+| DFM004 | Error | Invalid binary signature |
+| DFM005 | Error | Unknown binary value type tag |
+| DFM006 | Warning | Incomplete hex data (odd nibble count) |
+| DFM007 | Warning | Char literal value out of range |
+| DFM008 | Info | Form parsed with recovery (partial AST) |
+
+## Key behaviors
+
+- Parser continues after non-fatal errors where possible, collecting
+  diagnostics rather than aborting on first error
+- `TParseResult.Success` is True when no dsError diagnostics present
+- `TParseResult.Form` may be non-nil even when Success is False
+  (partial AST with error nodes skipped)
+- Existing exception-based API (`ParseText`, `ParseFile`) unchanged --
+  the `WithDiagnostics` variants are additive
+- FormStats and TreeDump can optionally use the diagnostics API to
+  report structured errors instead of catch-and-count
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.Diagnostics.pas` with types
+- [ ] `WithDiagnostics` overloads on facade
+- [ ] Parser modified to collect diagnostics instead of raising
+  (internal mode toggle, exception API still raises)
+- [ ] Add to test project
+- [ ] Tests for each diagnostic code
+
+## Acceptance criteria
+
+- [ ] Existing exception-based API unchanged (backward compatible)
+- [ ] WithDiagnostics returns structured errors with line/col/code
+- [ ] Parser recovers from non-fatal errors and continues
+- [ ] All existing tests still pass

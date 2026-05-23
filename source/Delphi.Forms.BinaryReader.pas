@@ -7,7 +7,8 @@ uses
   System.Classes,
   System.Math,
   System.Generics.Collections,
-  Delphi.Forms.Types;
+  Delphi.Forms.Types,
+  Delphi.Forms.Diagnostics;
 
 type
 
@@ -18,6 +19,7 @@ type
   TDfmBinaryReader = class
   private
     FStream: TStream;
+    FDiagnostics: TList<TFormDiagnostic>;
     function ReadByte: Byte;
     function ReadWord: Word;
     function ReadInt32: Int32;
@@ -36,10 +38,12 @@ type
     function ReadValue: TFormValue;
     procedure ReadProperties(Obj: TFormObject);
     procedure ReadChildren(Obj: TFormObject);
+    procedure AddDiag(Severity: TFormDiagnosticSeverity; const Code, Msg: string);
   public
     function ReadFromStream(Stream: TStream): TFormFile;
     function ReadFromBytes(const Data: TBytes): TFormFile;
     function ReadFromFile(const FileName: string): TFormFile;
+    function ReadFromBytesWithDiagnostics(const Data: TBytes): TParseResult;
   end;
 
 const
@@ -69,6 +73,12 @@ const
 implementation
 
 { TDfmBinaryReader }
+
+procedure TDfmBinaryReader.AddDiag(Severity: TFormDiagnosticSeverity; const Code, Msg: string);
+begin
+  if FDiagnostics <> nil then
+    FDiagnostics.Add(TFormDiagnostic.Create(Severity, 0, 0, Msg, Code));
+end;
 
 function TDfmBinaryReader.ReadByte: Byte;
 begin
@@ -516,6 +526,7 @@ var
   FirstByte: Byte;
 begin
   FStream := Stream;
+  FDiagnostics := nil;
 
   // Check for $FF prefix
   FirstByte := ReadByte;
@@ -565,6 +576,93 @@ begin
     Result := ReadFromStream(Stream);
   finally
     Stream.Free;
+  end;
+end;
+
+function TDfmBinaryReader.ReadFromBytesWithDiagnostics(const Data: TBytes): TParseResult;
+var
+  Stream: TBytesStream;
+  Sig: array[0..3] of AnsiChar;
+  FirstByte: Byte;
+  HasErrors: Boolean;
+  I: Integer;
+begin
+  Result.Form := nil;
+  Result.Diagnostics := nil;
+  Result.Success := False;
+
+  FDiagnostics := TList<TFormDiagnostic>.Create;
+  try
+    Stream := TBytesStream.Create(Data);
+    try
+      FStream := Stream;
+
+      // Validate signature
+      try
+        FirstByte := ReadByte;
+        if FirstByte = $FF then
+        begin
+          FStream.ReadBuffer(Sig, 4);
+          if string(Sig) <> 'TPF0' then
+          begin
+            AddDiag(dsError, DiagInvalidBinarySignature, 'Invalid binary DFM: expected TPF0 signature');
+            Result.Diagnostics := FDiagnostics.ToArray;
+            Exit;
+          end;
+        end
+        else
+        begin
+          FStream.Position := FStream.Position - 1;
+          FStream.ReadBuffer(Sig, 4);
+          if string(Sig) <> 'TPF0' then
+          begin
+            AddDiag(dsError, DiagInvalidBinarySignature, 'Invalid binary DFM: expected TPF0 signature');
+            Result.Diagnostics := FDiagnostics.ToArray;
+            Exit;
+          end;
+        end;
+      except
+        on E: Exception do
+        begin
+          AddDiag(dsError, DiagInvalidBinarySignature, 'Invalid binary DFM: ' + E.Message);
+          Result.Diagnostics := FDiagnostics.ToArray;
+          Exit;
+        end;
+      end;
+
+      // Read the object tree
+      Result.Form := TFormFile.Create;
+      try
+        Result.Form.Root := ReadObject;
+      except
+        on E: Exception do
+        begin
+          if Pos('Unknown binary value type', E.Message) > 0 then
+            AddDiag(dsError, DiagUnknownBinaryValueType, E.Message)
+          else
+            AddDiag(dsError, DiagUnexpectedEndOfInput, E.Message);
+          // Keep partial Form (Root may be partially populated)
+        end;
+      end;
+    finally
+      Stream.Free;
+    end;
+
+    HasErrors := False;
+    for I := 0 to FDiagnostics.Count - 1 do
+    begin
+      if FDiagnostics[I].Severity = dsError then
+      begin
+        HasErrors := True;
+        Break;
+      end;
+    end;
+
+    Result.Success := not HasErrors;
+    Result.Diagnostics := FDiagnostics.ToArray;
+  finally
+    FDiagnostics.Free;
+    FDiagnostics := nil;
   end;
 end;
 

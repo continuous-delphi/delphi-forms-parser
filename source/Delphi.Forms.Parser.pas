@@ -7,7 +7,8 @@ uses
   System.Generics.Collections,
   Delphi.Forms.Token,
   Delphi.Forms.Lexer,
-  Delphi.Forms.Types;
+  Delphi.Forms.Types,
+  Delphi.Forms.Diagnostics;
 
 type
 
@@ -15,16 +16,21 @@ type
   private
     FTokens: TDfmTokenList;
     FPos: Integer;
+    FDiagnostics: TList<TFormDiagnostic>;
+    FDiagnosticMode: Boolean;
     function Current: TDfmToken;
     function CurrentKind: TDfmTokenKind;
     function CurrentText: string;
     function AtEnd: Boolean;
     procedure Advance;
     procedure SkipTrivia;
+    function TryExpect(Kind: TDfmTokenKind): Boolean;
     procedure Expect(Kind: TDfmTokenKind);
     function MatchIdent(const Text: string): Boolean;
     function IsObjectKeyword: Boolean;
     function CurrentOffset: Integer;
+    procedure AddDiag(Severity: TFormDiagnosticSeverity; const Code, Msg: string; Line, Col: Integer);
+    procedure SkipToRecoveryPoint;
     function ParseObject: TFormObject;
     function ParseProperty: TFormProperty;
     function ParseDottedName: string;
@@ -36,6 +42,7 @@ type
     function ParseBinaryValue: TFormValue;
   public
     function Parse(const Source: string): TFormFile;
+    function ParseWithDiagnostics(const Source: string): TParseResult;
   end;
 
 implementation
@@ -78,6 +85,53 @@ procedure TDfmParser.SkipTrivia;
 begin
   while not AtEnd and ((CurrentKind = dtkWhitespace) or (CurrentKind = dtkEOL)) do
     Advance;
+end;
+
+procedure TDfmParser.AddDiag(Severity: TFormDiagnosticSeverity; const Code, Msg: string; Line, Col: Integer);
+begin
+  if FDiagnostics <> nil then
+    FDiagnostics.Add(TFormDiagnostic.Create(Severity, Line, Col, Msg, Code));
+end;
+
+procedure TDfmParser.SkipToRecoveryPoint;
+begin
+  // Skip tokens until we find an identifier (next property), 'end', or EOF
+  while not AtEnd do
+  begin
+    if (CurrentKind = dtkIdentifier) then
+      Break;
+    if (CurrentKind = dtkEOF) then
+      Break;
+    Advance;
+  end;
+end;
+
+function TDfmParser.TryExpect(Kind: TDfmTokenKind): Boolean;
+begin
+  if AtEnd then
+  begin
+    if FDiagnosticMode then
+    begin
+      AddDiag(dsError, DiagUnexpectedEndOfInput, Format('Unexpected end of DFM input: expected token kind %d', [Ord(Kind)]), 0, 0);
+      Result := False;
+      Exit;
+    end
+    else
+      raise Exception.CreateFmt('Unexpected end of DFM input: expected token kind %d', [Ord(Kind)]);
+  end;
+  if CurrentKind <> Kind then
+  begin
+    if FDiagnosticMode then
+    begin
+      AddDiag(dsError, DiagExpectedTokenNotFound, Format('Expected token kind %d but got %d at line %d col %d', [Ord(Kind), Ord(CurrentKind), Current.Line, Current.Col]), Current.Line, Current.Col);
+      Result := False;
+      Exit;
+    end
+    else
+      raise Exception.CreateFmt('Expected token kind %d but got %d at line %d col %d', [Ord(Kind), Ord(CurrentKind), Current.Line, Current.Col]);
+  end;
+  Advance;
+  Result := True;
 end;
 
 procedure TDfmParser.Expect(Kind: TDfmTokenKind);
@@ -129,14 +183,50 @@ begin
     SkipTrivia;
 
     // Name : ClassName
-    Result.Name := CurrentText;
-    Expect(dtkIdentifier);
-    SkipTrivia;
-    Expect(dtkColon);
-    SkipTrivia;
-    Result.ClassName_ := CurrentText;
-    Expect(dtkIdentifier);
-    SkipTrivia;
+    if FDiagnosticMode then
+    begin
+      if not AtEnd and (CurrentKind = dtkIdentifier) then
+      begin
+        Result.Name := CurrentText;
+        Advance;
+      end
+      else
+      begin
+        AddDiag(dsError, DiagExpectedTokenNotFound, 'Expected object name identifier', 0, 0);
+        Result.SourceEnd := CurrentOffset;
+        Exit;
+      end;
+      SkipTrivia;
+      if not TryExpect(dtkColon) then
+      begin
+        Result.SourceEnd := CurrentOffset;
+        Exit;
+      end;
+      SkipTrivia;
+      if not AtEnd and (CurrentKind = dtkIdentifier) then
+      begin
+        Result.ClassName_ := CurrentText;
+        Advance;
+      end
+      else
+      begin
+        AddDiag(dsError, DiagExpectedTokenNotFound, 'Expected class name identifier', 0, 0);
+        Result.SourceEnd := CurrentOffset;
+        Exit;
+      end;
+      SkipTrivia;
+    end
+    else
+    begin
+      Result.Name := CurrentText;
+      Expect(dtkIdentifier);
+      SkipTrivia;
+      Expect(dtkColon);
+      SkipTrivia;
+      Result.ClassName_ := CurrentText;
+      Expect(dtkIdentifier);
+      SkipTrivia;
+    end;
 
     // Properties and children until 'end'
     while not AtEnd and not MatchIdent('end') do
@@ -148,9 +238,42 @@ begin
         Break;
 
       if IsObjectKeyword then
-        Result.Children.Add(ParseObject)
+      begin
+        if FDiagnosticMode then
+        begin
+          try
+            Result.Children.Add(ParseObject);
+          except
+            on E: Exception do
+            begin
+              AddDiag(dsError, DiagInvalidValueSyntax, E.Message, 0, 0);
+              SkipToRecoveryPoint;
+            end;
+          end;
+        end
+        else
+          Result.Children.Add(ParseObject);
+      end
       else if CurrentKind = dtkIdentifier then
-        Result.Properties.Add(ParseProperty)
+      begin
+        if FDiagnosticMode then
+        begin
+          try
+            Result.Properties.Add(ParseProperty);
+          except
+            on E: Exception do
+            begin
+              var Line := 0;
+              var Col := 0;
+              if not AtEnd then begin Line := Current.Line; Col := Current.Col; end;
+              AddDiag(dsError, DiagInvalidValueSyntax, E.Message, Line, Col);
+              SkipToRecoveryPoint;
+            end;
+          end;
+        end
+        else
+          Result.Properties.Add(ParseProperty);
+      end
       else
         Advance; // skip unexpected tokens
     end;
@@ -162,7 +285,11 @@ begin
       Advance;
     end
     else
+    begin
+      if FDiagnosticMode then
+        AddDiag(dsError, DiagUnexpectedEndOfInput, 'Unexpected end of DFM input: missing ''end''', 0, 0);
       Result.SourceEnd := CurrentOffset;
+    end;
     SkipTrivia;
   except
     Result.Free;
@@ -313,6 +440,7 @@ function TDfmParser.ParseStringValue: TFormValue;
 var
   S: string;
   Raw: string;
+  CharVal: Integer;
 begin
   Result := TFormValue.Create(fvString);
   try
@@ -331,9 +459,16 @@ begin
       begin
         Raw := Raw + CurrentText;
         if (Length(CurrentText) > 1) and (CurrentText[2] = '$') then
-          S := S + Chr(StrToInt('$' + Copy(CurrentText, 3, MaxInt)))
+          CharVal := StrToInt('$' + Copy(CurrentText, 3, MaxInt))
         else
-          S := S + Chr(StrToInt(Copy(CurrentText, 2, MaxInt)));
+          CharVal := StrToInt(Copy(CurrentText, 2, MaxInt));
+        if (CharVal < 0) or (CharVal > $FFFF) then
+        begin
+          if FDiagnosticMode then
+            AddDiag(dsWarning, DiagCharLiteralOutOfRange, Format('Char literal %s value %d out of range (0..$FFFF)', [CurrentText, CharVal]), Current.Line, Current.Col);
+          CharVal := Ord('?');
+        end;
+        S := S + Chr(CharVal);
         Advance;
       end;
     end;
@@ -356,9 +491,16 @@ begin
         begin
           Raw := Raw + CurrentText;
           if (Length(CurrentText) > 1) and (CurrentText[2] = '$') then
-            S := S + Chr(StrToInt('$' + Copy(CurrentText, 3, MaxInt)))
+            CharVal := StrToInt('$' + Copy(CurrentText, 3, MaxInt))
           else
-            S := S + Chr(StrToInt(Copy(CurrentText, 2, MaxInt)));
+            CharVal := StrToInt(Copy(CurrentText, 2, MaxInt));
+          if (CharVal < 0) or (CharVal > $FFFF) then
+          begin
+            if FDiagnosticMode then
+              AddDiag(dsWarning, DiagCharLiteralOutOfRange, Format('Char literal %s value %d out of range (0..$FFFF)', [CurrentText, CharVal]), Current.Line, Current.Col);
+            CharVal := Ord('?');
+          end;
+          S := S + Chr(CharVal);
           Advance;
         end;
       end;
@@ -525,7 +667,10 @@ begin
       if CharInSet(FullText[I], ['0'..'9', 'A'..'F', 'a'..'f']) then
         HexOnly := HexOnly + FullText[I];
     end;
-    // RawText preserves the full {hex} block including braces for round-trip
+
+    // Check for odd nibble count (DFM006)
+    if (Length(HexOnly) mod 2 <> 0) and FDiagnosticMode then
+      AddDiag(dsWarning, DiagIncompleteHexData, Format('Incomplete hex data: odd nibble count (%d) at line %d col %d', [Length(HexOnly), Current.Line, Current.Col]), Current.Line, Current.Col);
 
     B := TList<Byte>.Create;
     try
@@ -557,6 +702,8 @@ begin
     FTokens := Lexer.Tokenize(Source);
     try
       FPos := 0;
+      FDiagnosticMode := False;
+      FDiagnostics := nil;
       Result := TFormFile.Create;
       try
         SkipTrivia;
@@ -571,6 +718,69 @@ begin
     end;
   finally
     Lexer.Free;
+  end;
+end;
+
+function TDfmParser.ParseWithDiagnostics(const Source: string): TParseResult;
+var
+  Lexer: TDfmLexer;
+  HasErrors: Boolean;
+  I: Integer;
+begin
+  Result.Form := nil;
+  Result.Diagnostics := nil;
+  Result.Success := False;
+
+  FDiagnostics := TList<TFormDiagnostic>.Create;
+  try
+    Lexer := TDfmLexer.Create;
+    try
+      FTokens := Lexer.Tokenize(Source);
+      try
+        FPos := 0;
+        FDiagnosticMode := True;
+        Result.Form := TFormFile.Create;
+        try
+          SkipTrivia;
+          if not AtEnd and IsObjectKeyword then
+            Result.Form.Root := ParseObject
+          else if not AtEnd and (CurrentKind <> dtkEOF) then
+            AddDiag(dsError, DiagInvalidValueSyntax, Format('Expected object/inherited/inline keyword, got ''%s'' at line %d col %d', [CurrentText, Current.Line, Current.Col]), Current.Line, Current.Col);
+        except
+          on E: Exception do
+          begin
+            var Line := 0;
+            var Col := 0;
+            AddDiag(dsError, DiagInvalidValueSyntax, E.Message, Line, Col);
+          end;
+        end;
+      finally
+        FTokens.Free;
+      end;
+    finally
+      Lexer.Free;
+    end;
+
+    // Check for any recovery that happened (warnings present but parsed OK)
+    HasErrors := False;
+    for I := 0 to FDiagnostics.Count - 1 do
+    begin
+      if FDiagnostics[I].Severity = dsError then
+      begin
+        HasErrors := True;
+        Break;
+      end;
+    end;
+
+    if (not HasErrors) and (FDiagnostics.Count > 0) then
+      AddDiag(dsInfo, DiagParsedWithRecovery, 'Form parsed with recovery (warnings present)', 0, 0);
+
+    Result.Success := not HasErrors;
+    Result.Diagnostics := FDiagnostics.ToArray;
+  finally
+    FDiagnostics.Free;
+    FDiagnostics := nil;
+    FDiagnosticMode := False;
   end;
 end;
 

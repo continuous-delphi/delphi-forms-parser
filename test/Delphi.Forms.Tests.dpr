@@ -24,6 +24,7 @@ uses
   Delphi.Forms.BinaryWriter in '..\source\Delphi.Forms.BinaryWriter.pas',
   Delphi.Forms.JSON in '..\source\Delphi.Forms.JSON.pas',
   Delphi.Forms.Statistics in '..\source\Delphi.Forms.Statistics.pas',
+  Delphi.Forms.Diagnostics in '..\source\Delphi.Forms.Diagnostics.pas',
   Delphi.Forms in '..\source\Delphi.Forms.pas',
   Test.Delphi.Forms.Smoke in 'Test.Delphi.Forms.Smoke.pas',
   Test.Delphi.Forms.Types in 'Test.Delphi.Forms.Types.pas',
@@ -33,7 +34,8 @@ uses
   Test.Delphi.Forms.BinaryReader in 'Test.Delphi.Forms.BinaryReader.pas',
   Test.Delphi.Forms.BinaryWriter in 'Test.Delphi.Forms.BinaryWriter.pas',
   Test.Delphi.Forms.Golden in 'Test.Delphi.Forms.Golden.pas',
-  Test.Delphi.Forms.RoundTrip in 'Test.Delphi.Forms.RoundTrip.pas';
+  Test.Delphi.Forms.RoundTrip in 'Test.Delphi.Forms.RoundTrip.pas',
+  Test.Delphi.Forms.Diagnostics in 'Test.Delphi.Forms.Diagnostics.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}
