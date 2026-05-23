@@ -1132,6 +1132,7 @@ const
 ---
 Title: Add form normalization with configurable rules (Delphi.Forms.Normalize)
 Issue: #35
+Status: closed
 Labels: enhancement
 Body:
 Add a library unit that removes IDE-generated noise properties from a

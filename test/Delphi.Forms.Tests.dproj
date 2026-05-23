@@ -117,6 +117,7 @@
         <DCCReference Include="..\source\Delphi.Forms.JSON.pas"/>
         <DCCReference Include="..\source\Delphi.Forms.Statistics.pas"/>
         <DCCReference Include="..\source\Delphi.Forms.Diagnostics.pas"/>
+        <DCCReference Include="..\source\Delphi.Forms.Normalize.pas"/>
         <DCCReference Include="..\source\Delphi.Forms.pas"/>
         <DCCReference Include="Test.Delphi.Forms.Smoke.pas"/>
         <DCCReference Include="Test.Delphi.Forms.Types.pas"/>
@@ -128,6 +129,7 @@
         <DCCReference Include="Test.Delphi.Forms.Golden.pas"/>
         <DCCReference Include="Test.Delphi.Forms.RoundTrip.pas"/>
         <DCCReference Include="Test.Delphi.Forms.Diagnostics.pas"/>
+        <DCCReference Include="Test.Delphi.Forms.Normalize.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

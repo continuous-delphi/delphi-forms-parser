@@ -62,6 +62,7 @@ uses
   System.IOUtils,
   Delphi.Forms,
   Delphi.Forms.JSON,
+  Delphi.Forms.Normalize,
   Delphi.Forms.Info;
 
 class procedure TTreeDump.WriteObject(Obj: TFormObject; Depth: Integer; ShowValues: Boolean);
@@ -104,6 +105,7 @@ begin
   WriteLn('  --compact             JSON: compact output (no indentation)');
   WriteLn('  --positions           JSON: include sourceStart/sourceEnd offsets');
   WriteLn('  --raw-text            JSON: include rawText field on values');
+  WriteLn('  --normalize           Remove IDE noise properties (ExplicitBounds, TextHeight, DesignSize)');
   WriteLn('  --round-trip          Verify text round-trip (parse -> write == original)');
   WriteLn('  -?, --help            Show this help and exit');
   WriteLn('  -v, --version         Show version and exit');
@@ -119,6 +121,7 @@ var
   DoCompact: Boolean;
   DoPositions: Boolean;
   DoRawText: Boolean;
+  DoNormalize: Boolean;
   OutputFmt: TOutputFormat;
   JsonOpts: TFormJsonOptions;
   F: TFormFile;
@@ -141,6 +144,7 @@ begin
   DoCompact := False;
   DoPositions := False;
   DoRawText := False;
+  DoNormalize := False;
   OutputFmt := ofText;
   FmtStr := '';
 
@@ -167,6 +171,8 @@ begin
       DoPositions := True
     else if SameText(Arg, '--raw-text') then
       DoRawText := True
+    else if SameText(Arg, '--normalize') then
+      DoNormalize := True
     else if SameText(Copy(Arg, 1, 9), '--format:') then
       FmtStr := Copy(Arg, 10, MaxInt)
     else if (Arg <> '') and (Arg[1] = '-') then
@@ -224,7 +230,7 @@ begin
       end;
     end;
 
-    // Round-trip check (text format only)
+    // Round-trip check (text format only) -- before normalization
     RoundTripResult := '';
     if DoRoundTrip and (DfmFmt = dfText) then
     begin
@@ -237,6 +243,10 @@ begin
       else
         RoundTripResult := 'FAIL';
     end;
+
+    // Apply normalization after round-trip check
+    if DoNormalize then
+      NormalizeForm(F);
 
     Result := ExitCode_Success;
     case OutputFmt of

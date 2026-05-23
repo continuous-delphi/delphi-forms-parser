@@ -4,6 +4,14 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.7
 
+### 0.7.41
+
+- Add form normalization with configurable rules. `Delphi.Forms.Normalize`
+  unit with `NormalizeForm` procedure and `TFormNormalizeRules` set.
+  Removes IDE noise properties (ExplicitBounds, TextHeight, DesignSize)
+  recursively including collection items. TreeDump `--normalize` flag added.
+[#35](https://github.com/continuous-delphi/delphi-forms-parser/issues/35)
+
 ### 0.7.39
 
 - Add structured diagnostics for batch processing. `Delphi.Forms.Diagnostics`
