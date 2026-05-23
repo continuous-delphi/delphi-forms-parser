@@ -69,6 +69,7 @@ type
     ItemIndex: Int64;
     SourceStart: Integer;
     SourceEnd: Integer;
+    Parent: TFormObject;
     Properties: TFormPropertyList;
     Children: TFormObjectList;
     constructor Create;

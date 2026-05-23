@@ -1665,6 +1665,7 @@ The component name index is built in a first pass (or in `VisitObject`).
 ---
 Title: Add Parent back-reference to TFormObject
 Issue: #46
+Status: closed
 Labels: enhancement
 Body:
 AST nodes currently have no upward reference -- `TFormObject` owns its

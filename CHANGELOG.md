@@ -4,6 +4,14 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.8
 
+### 0.8.45
+
+- Add non-owning `Parent: TFormObject` back-reference to `TFormObject`.
+  Set automatically during text and binary parsing. Nil for root and
+  collection items. Enables upward traversal for path utilities and
+  ancestor queries.
+[#46](https://github.com/continuous-delphi/delphi-forms-parser/issues/46)
+
 ### 0.8.44
 
 - Add form ancestry helpers `IsInheritedForm` and `GetAncestorClassName`

@@ -72,7 +72,38 @@ type
     procedure FormFile_FullTree_NoLeaks;
   end;
 
+  [TestFixture]
+  TParentBackRefTests = class
+  public
+    [Test]
+    procedure Root_ParentIsNil;
+
+    [Test]
+    procedure TextParse_ChildrenHaveParent;
+
+    [Test]
+    procedure TextParse_DeepNesting_ParentChain;
+
+    [Test]
+    procedure BinaryParse_ChildrenHaveParent;
+
+    [Test]
+    procedure Programmatic_ParentDefaultsToNil;
+
+    [Test]
+    procedure Programmatic_ManualParentAssignment;
+
+    [Test]
+    procedure CollectionItems_ParentIsNil;
+
+    [Test]
+    procedure NonOwning_NoDoubleFree;
+  end;
+
 implementation
+
+uses
+  Delphi.Forms;
 
 { TFormValueTests }
 
@@ -450,10 +481,175 @@ begin
   end;
 end;
 
+{ TParentBackRefTests }
+
+procedure TParentBackRefTests.Root_ParentIsNil;
+var
+  F: TFormFile;
+begin
+  F := TDelphiFormsParser.ParseText(
+    'object Form1: TForm1'#13#10 +
+    '  Caption = ''Test'''#13#10 +
+    'end'#13#10);
+  try
+    Assert.IsNull(F.Root.Parent, 'Root Parent should be nil');
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TParentBackRefTests.TextParse_ChildrenHaveParent;
+var
+  F: TFormFile;
+begin
+  F := TDelphiFormsParser.ParseText(
+    'object Form1: TForm1'#13#10 +
+    '  object Panel1: TPanel'#13#10 +
+    '    Left = 0'#13#10 +
+    '  end'#13#10 +
+    '  object Button1: TButton'#13#10 +
+    '    Left = 10'#13#10 +
+    '  end'#13#10 +
+    'end'#13#10);
+  try
+    Assert.IsNull(F.Root.Parent, 'Root Parent should be nil');
+    Assert.AreSame(F.Root, F.Root.Children[0].Parent, 'Panel1.Parent should be Form1');
+    Assert.AreSame(F.Root, F.Root.Children[1].Parent, 'Button1.Parent should be Form1');
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TParentBackRefTests.TextParse_DeepNesting_ParentChain;
+var
+  F: TFormFile;
+  Panel, Label1: TFormObject;
+begin
+  F := TDelphiFormsParser.ParseText(
+    'object Form1: TForm1'#13#10 +
+    '  object Panel1: TPanel'#13#10 +
+    '    object Label1: TLabel'#13#10 +
+    '      Caption = ''Hi'''#13#10 +
+    '    end'#13#10 +
+    '  end'#13#10 +
+    'end'#13#10);
+  try
+    Panel := F.Root.Children[0];
+    Label1 := Panel.Children[0];
+    Assert.IsNull(F.Root.Parent, 'Root.Parent = nil');
+    Assert.AreSame(F.Root, Panel.Parent, 'Panel1.Parent = Form1');
+    Assert.AreSame(Panel, Label1.Parent, 'Label1.Parent = Panel1');
+    // Walk parent chain from Label1 to root
+    Assert.AreSame(F.Root, Label1.Parent.Parent, 'Label1.Parent.Parent = Form1');
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TParentBackRefTests.BinaryParse_ChildrenHaveParent;
+var
+  OrigForm: TFormFile;
+  BinData: TBytes;
+  F: TFormFile;
+begin
+  OrigForm := TDelphiFormsParser.ParseText(
+    'object Form1: TForm1'#13#10 +
+    '  object Panel1: TPanel'#13#10 +
+    '    Left = 0'#13#10 +
+    '  end'#13#10 +
+    'end'#13#10);
+  try
+    BinData := TDelphiFormsParser.WriteBinary(OrigForm);
+  finally
+    OrigForm.Free;
+  end;
+  F := TDelphiFormsParser.ParseBinary(BinData);
+  try
+    Assert.IsNull(F.Root.Parent, 'Root Parent should be nil');
+    Assert.AreSame(F.Root, F.Root.Children[0].Parent, 'Panel1.Parent should be Form1');
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TParentBackRefTests.Programmatic_ParentDefaultsToNil;
+var
+  Obj: TFormObject;
+begin
+  Obj := TFormObject.Create;
+  try
+    Assert.IsNull(Obj.Parent, 'New object Parent should default to nil');
+  finally
+    Obj.Free;
+  end;
+end;
+
+procedure TParentBackRefTests.Programmatic_ManualParentAssignment;
+var
+  F: TFormFile;
+  Child: TFormObject;
+begin
+  F := TFormFile.Create;
+  try
+    F.Root := TFormObject.Create;
+    F.Root.Name := 'Form1';
+    Child := TFormObject.Create;
+    Child.Name := 'Panel1';
+    Child.Parent := F.Root;
+    F.Root.Children.Add(Child);
+    Assert.AreSame(F.Root, Child.Parent);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TParentBackRefTests.CollectionItems_ParentIsNil;
+var
+  F: TFormFile;
+  CollItem: TFormObject;
+begin
+  F := TDelphiFormsParser.ParseText(
+    'object Form1: TForm1'#13#10 +
+    '  Items = <'#13#10 +
+    '    item'#13#10 +
+    '      Caption = ''Test'''#13#10 +
+    '    end>'#13#10 +
+    'end'#13#10);
+  try
+    CollItem := F.Root.Properties[0].Value.CollectionItems[0];
+    Assert.IsNull(CollItem.Parent, 'Collection item Parent should be nil');
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TParentBackRefTests.NonOwning_NoDoubleFree;
+var
+  F: TFormFile;
+begin
+  // If Parent were owning, freeing the tree would double-free.
+  // This test passing with zero leaks proves Parent is non-owning.
+  F := TDelphiFormsParser.ParseText(
+    'object Form1: TForm1'#13#10 +
+    '  object Panel1: TPanel'#13#10 +
+    '    object Label1: TLabel'#13#10 +
+    '      Caption = ''Hi'''#13#10 +
+    '    end'#13#10 +
+    '  end'#13#10 +
+    'end'#13#10);
+  try
+    Assert.IsNotNull(F.Root.Children[0].Parent);
+  finally
+    F.Free;
+    // FastMM4 leak monitor will catch double-free or leaks
+  end;
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TFormValueTests);
   TDUnitX.RegisterTestFixture(TFormPropertyTests);
   TDUnitX.RegisterTestFixture(TFormObjectTests);
   TDUnitX.RegisterTestFixture(TFormFileTests);
+  TDUnitX.RegisterTestFixture(TParentBackRefTests);
 
 end.

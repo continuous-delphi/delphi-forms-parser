@@ -242,7 +242,9 @@ begin
         if FDiagnosticMode then
         begin
           try
-            Result.Children.Add(ParseObject);
+            var Child := ParseObject;
+            Child.Parent := Result;
+            Result.Children.Add(Child);
           except
             on E: Exception do
             begin
@@ -252,7 +254,11 @@ begin
           end;
         end
         else
-          Result.Children.Add(ParseObject);
+        begin
+          var Child := ParseObject;
+          Child.Parent := Result;
+          Result.Children.Add(Child);
+        end;
       end
       else if CurrentKind = dtkIdentifier then
       begin

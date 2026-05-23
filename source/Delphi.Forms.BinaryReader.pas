@@ -299,7 +299,9 @@ begin
       Break;
     // Put back the byte -- it's the start of a child object's class name length
     FStream.Position := FStream.Position - 1;
-    Obj.Children.Add(ReadObject);
+    var Child := ReadObject;
+    Child.Parent := Obj;
+    Obj.Children.Add(Child);
   end;
 end;
 
