@@ -2,7 +2,12 @@
 Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 
 ---
+## 0.5
+
+
 ## 0.4
+
+- Two utilities in place, both with JSON output.
 
 ### 0.4.26
 
