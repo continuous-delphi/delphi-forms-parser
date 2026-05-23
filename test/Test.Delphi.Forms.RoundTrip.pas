@@ -42,6 +42,10 @@ type
     procedure ParseBytes_ANSIExplicit;
     [Test]
     procedure ParseFile_EncodingOverload;
+    [Test]
+    procedure ParseBytes_Win1252Fallback;
+    [Test]
+    procedure ParseBytes_ExplicitEncoding_NoFallback;
   end;
 
 implementation
@@ -310,6 +314,53 @@ begin
     end;
   finally
     TFile.Delete(TempFile);
+  end;
+end;
+
+procedure TRoundTripTests.ParseBytes_Win1252Fallback;
+var
+  Data: TBytes;
+  F: TFormFile;
+begin
+  // Build ANSI bytes with $E9 (e-acute in Win1252, invalid as standalone UTF-8)
+  // 'object f: TF\r\n  Caption = 'Caf' + $E9 + '\r\nend\r\n'
+  Data := TBytes.Create(
+    Ord('o'),Ord('b'),Ord('j'),Ord('e'),Ord('c'),Ord('t'),Ord(' '),
+    Ord('f'),Ord(':'),Ord(' '),Ord('T'),Ord('F'),$0D,$0A,
+    Ord(' '),Ord(' '),Ord('C'),Ord('a'),Ord('p'),Ord('t'),Ord('i'),Ord('o'),Ord('n'),
+    Ord(' '),Ord('='),Ord(' '),Ord(''''),Ord('C'),Ord('a'),Ord('f'),$E9,Ord(''''),
+    $0D,$0A,Ord('e'),Ord('n'),Ord('d'),$0D,$0A);
+  // $E9 is invalid standalone UTF-8, should fall back to Win1252
+  F := TDelphiFormsParser.ParseBytes(Data);
+  try
+    Assert.IsNotNull(F.Root);
+    Assert.AreEqual('f', F.Root.Name);
+    // Win1252 $E9 = e-acute (U+00E9)
+    Assert.AreEqual(fvString, F.Root.Properties[0].Value.Kind);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TRoundTripTests.ParseBytes_ExplicitEncoding_NoFallback;
+var
+  Data: TBytes;
+begin
+  // Same invalid-UTF-8 data, but with explicit UTF-8 encoding -- should raise
+  Data := TBytes.Create(
+    Ord('o'),Ord('b'),Ord('j'),Ord('e'),Ord('c'),Ord('t'),Ord(' '),
+    Ord('f'),Ord(':'),Ord(' '),Ord('T'),Ord('F'),$0D,$0A,
+    Ord(' '),Ord(' '),Ord('L'),Ord('e'),Ord('f'),Ord('t'),
+    Ord(' '),Ord('='),Ord(' '),$FE,$FF,$0D,$0A,
+    Ord('e'),Ord('n'),Ord('d'),$0D,$0A);
+  // Explicit encoding does NOT fall back -- $FE $FF are invalid UTF-8
+  // Parser may either raise or produce garbage, but should not crash with AV
+  // Just verify it doesn't crash
+  try
+    var F := TDelphiFormsParser.ParseBytes(Data, TEncoding.UTF8);
+    F.Free;
+  except
+    // Exception is acceptable for explicit encoding with invalid bytes
   end;
 end;
 

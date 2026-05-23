@@ -955,6 +955,7 @@ indentation or whitespace will be normalized.
 ---
 Title: Add Win1252 ANSI fallback for text DFM file reading
 Issue: #31
+Status: closed
 Labels: enhancement
 Body:
 When `ParseFile` or `ParseBytes` decodes a text DFM as UTF-8 and the file

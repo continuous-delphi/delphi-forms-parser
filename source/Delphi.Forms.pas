@@ -96,6 +96,8 @@ var
   Enc: TEncoding;
   Preamble: TBytes;
   Offset: Integer;
+  Source: string;
+  Win1252: TEncoding;
 begin
   if IsBinaryDfm(Data) then
     Result := ParseBinary(Data)
@@ -115,7 +117,21 @@ begin
     end
     else
       Offset := 0;
-    Result := ParseText(Enc.GetString(Data, Offset, Length(Data) - Offset));
+    try
+      Source := Enc.GetString(Data, Offset, Length(Data) - Offset);
+    except
+      on E: EEncodingError do
+      begin
+        // UTF-8 decode failed -- fall back to Windows-1252 (legacy ANSI DFM)
+        Win1252 := TMBCSEncoding.Create(1252, False);
+        try
+          Source := Win1252.GetString(Data);
+        finally
+          Win1252.Free;
+        end;
+      end;
+    end;
+    Result := ParseText(Source);
   end;
 end;
 

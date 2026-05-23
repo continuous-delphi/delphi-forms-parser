@@ -4,6 +4,13 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.5
 
+### 0.5.33
+
+- Add Win1252 ANSI fallback for text DFM reading. ParseBytes auto-detects
+  UTF-8, catches EEncodingError on invalid byte sequences, and retries with
+  Windows-1252 (codepage 1252). Explicit encoding overloads do not fall back.
+[#31](https://github.com/continuous-delphi/delphi-forms-parser/issues/31)
+
 ### 0.5.32
 
 - Add source position tracking (SourceStart/SourceEnd) to TFormObject,
