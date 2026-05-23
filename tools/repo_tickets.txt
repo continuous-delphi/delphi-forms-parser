@@ -562,6 +562,7 @@ unlikely scenario, but incorrect if reached.
 ---
 Title: Add tests for malformed and edge-case input
 Issue: #20
+Status: closed
 Labels: testing
 Body:
 The code review identified several untested input scenarios that could

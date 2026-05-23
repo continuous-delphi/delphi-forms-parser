@@ -82,6 +82,10 @@ type
     procedure Parse_TruncatedMissingClassName;
     [Test]
     procedure Parse_EmptyInput;
+    [Test]
+    procedure Parse_IncompleteHexData;
+    [Test]
+    procedure Parse_CharLiteralLargeValue;
   end;
 
 implementation
@@ -632,6 +636,36 @@ begin
   F := FParser.Parse('');
   try
     Assert.IsNull(F.Root, 'Empty input should produce nil root');
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmParserTests.Parse_IncompleteHexData;
+var
+  F: TFormFile;
+begin
+  // Odd number of hex chars: {0A5} has 3 hex chars, last nibble dropped
+  // Parser should not crash, binary data should contain 1 byte ($0A)
+  F := FParser.Parse('object f: TF'#13#10'  Data = {0A5}'#13#10'end'#13#10);
+  try
+    Assert.AreEqual(fvBinary, F.Root.Properties[0].Value.Kind);
+    Assert.AreEqual(NativeInt(1), NativeInt(Length(F.Root.Properties[0].Value.BinaryData)), 'Odd hex chars: partial byte dropped');
+    Assert.AreEqual(Byte($0A), F.Root.Properties[0].Value.BinaryData[0]);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmParserTests.Parse_CharLiteralLargeValue;
+var
+  F: TFormFile;
+begin
+  // #65 = 'A', should not crash
+  F := FParser.Parse('object f: TF'#13#10'  Caption = #65'#13#10'end'#13#10);
+  try
+    Assert.AreEqual(fvString, F.Root.Properties[0].Value.Kind);
+    Assert.AreEqual('A', F.Root.Properties[0].Value.StringValue);
   finally
     F.Free;
   end;

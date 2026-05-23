@@ -4,6 +4,14 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 
 
+### 0.2.19
+
+- Add malformed/edge-case input tests: binary reader (invalid signature,
+  truncated stream, unknown value type tag), parser (incomplete hex data,
+  char literal). Combined with tests from #16 and #17, all 8 identified
+  test gaps are now covered.
+[#20](https://github.com/continuous-delphi/delphi-forms-parser/issues/20)
+
 ### 0.2.17
 
 - Fix binary writer vaExtended fallback: raise clear exception instead of

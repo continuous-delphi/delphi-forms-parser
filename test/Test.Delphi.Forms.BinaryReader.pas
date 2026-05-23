@@ -58,6 +58,12 @@ type
     procedure Read_MultipleProperties;
     [Test]
     procedure Read_UTF8StringProperty;
+    [Test]
+    procedure Read_InvalidSignature_Raises;
+    [Test]
+    procedure Read_TruncatedStream_Raises;
+    [Test]
+    procedure Read_UnknownValueType_Raises;
   end;
 
 implementation
@@ -453,6 +459,59 @@ begin
   finally
     F.Free;
   end;
+end;
+
+procedure TDfmBinaryReaderTests.Read_InvalidSignature_Raises;
+begin
+  Assert.WillRaise(
+    procedure
+    var
+      F: TFormFile;
+    begin
+      F := FReader.ReadFromBytes(TBytes.Create($00, $00, $00, $00, $00));
+      F.Free;
+    end,
+    Exception);
+end;
+
+procedure TDfmBinaryReaderTests.Read_TruncatedStream_Raises;
+var
+  Data: TBytes;
+begin
+  // Valid signature but stream ends mid-object (no class name bytes)
+  Data := TBytes.Create(Ord('T'), Ord('P'), Ord('F'), Ord('0'), 5);
+  // Class name length says 5 but no bytes follow
+  Assert.WillRaise(
+    procedure
+    var
+      F: TFormFile;
+    begin
+      F := FReader.ReadFromBytes(Data);
+      F.Free;
+    end);
+end;
+
+procedure TDfmBinaryReaderTests.Read_UnknownValueType_Raises;
+var
+  Data: TBytes;
+begin
+  Data := nil;
+  AppendBytes(Data, TBytes.Create(Ord('T'), Ord('P'), Ord('F'), Ord('0')));
+  AppendShortString(Data, 'TF');
+  AppendShortString(Data, 'f');
+  AppendShortString(Data, 'Prop');
+  AppendByte(Data, 250); // unknown value type tag
+  AppendByte(Data, 0); // end props
+  AppendByte(Data, 0); // end children
+  Assert.WillRaise(
+    procedure
+    var
+      F: TFormFile;
+    begin
+      F := FReader.ReadFromBytes(Data);
+      F.Free;
+    end,
+    Exception);
 end;
 
 initialization
