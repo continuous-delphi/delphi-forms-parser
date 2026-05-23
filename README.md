@@ -29,6 +29,8 @@ and binary formats. Produces a typed AST with full round-trip fidelity.
   for migration workflows
 - **Typed collection items** -- supports `item ClassName ... end` syntax
 - **TreeDump utility** -- CLI tool for inspecting DFM/FMX component trees
+- **FormStats utility** -- codebase-wide component and property statistics
+  with recursive directory scanning
 
 ## Quick start
 
@@ -147,7 +149,39 @@ Round-trip: Pass
 Exit Code: 0
 ```
 
-Options: `--no-values`, `--round-trip`, `-v`, `-?`
+Options: `--no-values`, `--round-trip`, `--format:json`, `-v`, `-?`
+
+## FormStats utility
+
+CLI tool for component and property statistics across a codebase:
+
+```
+Delphi.Forms.FormStats.exe C:\code\legacy-app\source --recursive
+
+Delphi.Forms.FormStats
+Path: C:\code\legacy-app\source
+Files: 47 (42 text, 5 binary)
+
+Components:     312
+Unique classes: 28
+Properties:     4,218
+Max depth:      7
+Avg depth:      2.3
+
+Value types:
+  fvInteger:      1842 ( 43.7%)
+  fvString:       1204 ( 28.5%)
+  ...
+
+Top 10 classes:
+  TLabel               87
+  TButton              42
+  ...
+
+Parse failures: 0
+```
+
+Options: `--recursive`, `--format:json`, `--top:N`, `-v`, `-?`
 
 ---
 

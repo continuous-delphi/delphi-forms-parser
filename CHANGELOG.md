@@ -4,6 +4,14 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.4
 
+### 0.4.26
+
+- Add FormStats utility for component and property statistics across a
+  codebase. Single file, directory, and --recursive scanning. Text and JSON
+  output. Reports components, classes, properties, nesting depth, value type
+  distribution, object kinds, top-N classes/properties, parse failures.
+[#25](https://github.com/continuous-delphi/delphi-forms-parser/issues/25)
+
 ### 0.4.25
 
 - Add `--format:json` output to TreeDump utility. Produces structured JSON

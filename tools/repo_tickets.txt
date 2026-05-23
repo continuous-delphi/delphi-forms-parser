@@ -720,3 +720,106 @@ Add the same capability to the delphi-forms-parser TreeDump.
 - [ ] `--format:json` produces valid JSON parseable by standard tools
 - [ ] `--format:text` remains the default and is unchanged
 - [ ] All existing tests still pass
+
+---
+Title: FormStats utility -- component and property statistics across a codebase
+Issue: #25
+Status: closed
+Labels: enhancement
+Body:
+Add a FormStats console utility analogous to TokenStats in delphi-lexer.
+Scans one or more .dfm/.fmx files and reports aggregate statistics useful
+for scoping migration effort, auditing component usage, and identifying
+complexity hotspots.
+
+## Features
+
+- Accept a single file, a directory, or a directory with `--recursive`
+  to scan an entire codebase
+- Auto-detect text vs binary format per file
+- Report per-file and aggregate statistics:
+  - File count (text vs binary breakdown)
+  - Total components (objects) and unique class names
+  - Total properties
+  - Maximum and average nesting depth
+  - Value type distribution (how many fvInteger, fvString, fvSet, etc.)
+  - Object kind distribution (object vs inherited vs inline)
+  - Top N most-used component classes (e.g. TLabel: 142, TButton: 98)
+  - Top N most-used property names (e.g. Left: 500, Caption: 320)
+- Output formats: text (default) and JSON (`--format:json`)
+- Exit code 0 on success, 1 on bad params, 2 on any parse failures
+  (continue scanning, report failures at end)
+
+## CLI
+
+```
+FormStats <file-or-dir> [options]
+
+Options:
+  --recursive           Scan subdirectories
+  --format:<name>       Output format: text (default) or json
+  --top:<N>             Number of top classes/properties to show (default 10)
+  -?, --help            Show help
+  -v, --version         Show version
+```
+
+## Example output (text)
+
+```
+Delphi.Forms.FormStats
+Path: C:\code\legacy-app\source
+Files: 47 (42 text, 5 binary)
+
+Components:     312
+Unique classes: 28
+Properties:     4,218
+Max depth:      7
+Avg depth:      2.3
+
+Value types:
+  fvInteger:    1,842 (43.7%)
+  fvString:     1,204 (28.5%)
+  fvIdentifier:   489 (11.6%)
+  fvBoolean:      301 (7.1%)
+  fvSet:          198 (4.7%)
+  fvList:          96 (2.3%)
+  fvBinary:        52 (1.2%)
+  fvFloat:         28 (0.7%)
+  fvCollection:     8 (0.2%)
+
+Object kinds:
+  object:       298
+  inherited:     12
+  inline:         2
+
+Top 10 classes:
+  TLabel          87
+  TButton         42
+  TPanel          38
+  ...
+
+Top 10 properties:
+  Left           312
+  Top            312
+  Width          298
+  ...
+
+Parse failures: 0
+```
+
+## Deliverables
+
+- [ ] `projects/FormStats/Delphi.Forms.FormStats.dpr`
+- [ ] `projects/FormStats/Delphi.Forms.FormStats.dproj`
+- [ ] `projects/FormStats/Delphi.Forms.FormStats.Main.pas`
+- [ ] Update `Delphi.Forms.Projects.groupproj` to include FormStats
+- [ ] Update `delphi-ci.json` to build FormStats
+
+## Acceptance criteria
+
+- [ ] Single file mode produces correct statistics
+- [ ] Directory mode with `--recursive` scans all .dfm/.fmx files
+- [ ] Binary and text DFM files both counted correctly
+- [ ] Parse failures logged and counted, do not abort scan
+- [ ] JSON output is valid and parseable
+- [ ] Builds with 0 warnings, 0 errors

@@ -6,6 +6,9 @@
         <Projects Include="projects\TreeDump\Delphi.Forms.TreeDump.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="projects\FormStats\Delphi.Forms.FormStats.dproj">
+            <Dependencies/>
+        </Projects>
         <Projects Include="test\Delphi.Forms.Tests.dproj">
             <Dependencies/>
         </Projects>
@@ -26,6 +29,15 @@
     <Target Name="Delphi_Forms_TreeDump:Make">
         <MSBuild Projects="projects\TreeDump\Delphi.Forms.TreeDump.dproj" Targets="Make"/>
     </Target>
+    <Target Name="Delphi_Forms_FormStats">
+        <MSBuild Projects="projects\FormStats\Delphi.Forms.FormStats.dproj"/>
+    </Target>
+    <Target Name="Delphi_Forms_FormStats:Clean">
+        <MSBuild Projects="projects\FormStats\Delphi.Forms.FormStats.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Delphi_Forms_FormStats:Make">
+        <MSBuild Projects="projects\FormStats\Delphi.Forms.FormStats.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Delphi_Forms_Tests">
         <MSBuild Projects="test\Delphi.Forms.Tests.dproj"/>
     </Target>
@@ -36,13 +48,13 @@
         <MSBuild Projects="test\Delphi.Forms.Tests.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="Delphi_Forms_TreeDump;Delphi_Forms_Tests"/>
+        <CallTarget Targets="Delphi_Forms_TreeDump;Delphi_Forms_FormStats;Delphi_Forms_Tests"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="Delphi_Forms_TreeDump:Clean;Delphi_Forms_Tests:Clean"/>
+        <CallTarget Targets="Delphi_Forms_TreeDump:Clean;Delphi_Forms_FormStats:Clean;Delphi_Forms_Tests:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="Delphi_Forms_TreeDump:Make;Delphi_Forms_Tests:Make"/>
+        <CallTarget Targets="Delphi_Forms_TreeDump:Make;Delphi_Forms_FormStats:Make;Delphi_Forms_Tests:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
