@@ -932,6 +932,7 @@ node. The parser sets these from the tokens it consumes.
 ---
 Title: Tighten round-trip invariant to specify canonical input (A-2)
 Issue: #30
+Status: closed
 Labels: documentation
 Body:
 From code review `forms-parser-review.md`:

@@ -20,15 +20,29 @@ Each invariant states:
 
 ## I-1: Text round-trip fidelity
 
-**Rule:** Parsing a canonical text DFM file into a `TFormFile` AST and writing
-it back to text with `TDfmTextWriter` reproduces the original source
-byte-for-byte. No character may be added, removed, or altered.
+**Rule:** Parsing a canonically-formatted text DFM file into a `TFormFile` AST
+and writing it back to text with `TDfmTextWriter` reproduces the original
+source byte-for-byte. No character may be added, removed, or altered.
+
+**Canonical formatting** means the layout produced by the Delphi IDE:
+- 2-space indentation per nesting level
+- CRLF line endings
+- Single space around `=` in property assignments
+- Single space between `object`/`inherited`/`inline` and the component name
+- No trailing whitespace
+- No comments (the IDE never emits comments in DFM files)
+
+Hand-edited DFM files that deviate from canonical formatting (different
+indentation, extra whitespace, LF-only line endings) will be normalized to
+canonical layout on write. The round-trip guarantee applies only to
+canonically-formatted input.
 
 **Why it exists:** Migration and refactoring tools need to read a DFM, modify
 specific properties or components, and write it back without disturbing
 untouched portions of the file. If the writer changes indentation, value
 formatting, or line endings on unmodified content, diffs become noisy and
-code review is impractical.
+code review is impractical. Since the Delphi IDE always produces canonical
+formatting, this covers the overwhelming majority of real-world DFM files.
 
 **What breaks if violated:** A tool that updates a single property and writes
 the file back produces a diff touching every line. Round-trip tests in
@@ -38,6 +52,8 @@ the file back produces a diff touching every line. Round-trip tests in
 where the original text representation matters (hex integers, negative numbers,
 string concatenation patterns). The writer uses `RawText` when available,
 falling back to canonical formatting only for programmatically constructed ASTs.
+Structural whitespace (indentation, line endings, spacing around `=`) is not
+preserved in the AST -- the writer always generates canonical layout.
 
 ---
 
