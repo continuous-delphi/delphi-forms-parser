@@ -1280,3 +1280,542 @@ class function ParseFileWithDiagnostics(const FileName: string): TParseResult;
 - [ ] WithDiagnostics returns structured errors with line/col/code
 - [ ] Parser recovers from non-fatal errors and continues
 - [ ] All existing tests still pass
+
+---
+Title: Human-readable token kind names in parser error messages
+Issue: #37
+Labels: enhancement
+Body:
+Parser and diagnostic error messages currently emit raw ordinal values
+for token kinds, e.g. "Expected token kind 3 but got 6 at line 47 col 12."
+Token kind integers are meaningless to users without cross-referencing the
+`TDfmTokenKind` enum source.
+
+## Scope
+
+- [ ] Add `function TokenKindToString(Kind: TDfmTokenKind): string` to
+  `Delphi.Forms.Token` (returns e.g. `'string'`, `'colon'`, `'identifier'`)
+- [ ] Update `TDfmParser.Expect` to use token kind names in exception messages:
+  `"Expected 'colon' but got 'identifier' at line 47 col 12"`
+- [ ] Update `TDfmParser.ParseValue` unexpected-token error similarly
+- [ ] Update diagnostic messages in `TryExpect` and `ParseWithDiagnostics`
+  to use the same human-readable names
+- [ ] Add unit tests for `TokenKindToString` (all 21 token kinds)
+- [ ] Verify existing error-handling tests still pass (message text will change)
+
+## Acceptance criteria
+
+- [ ] All error messages use human-readable token kind names, not ordinals
+- [ ] `TokenKindToString` covers all 21 `TDfmTokenKind` values
+- [ ] All existing tests still pass (update expected messages where needed)
+
+---
+Title: Form comparison and diffing (Delphi.Forms.Diff)
+Issue: #38
+Labels: enhancement
+Body:
+Add a library unit for comparing two `TFormFile` ASTs and producing a
+structured diff. Useful for tools that show form-level changes between
+commits, migration auditing, and CI pipelines that need to detect
+component additions/removals/renames.
+
+## Design
+
+```pascal
+TPropertyChange = record
+  ComponentPath: string;   // e.g. 'Form1.Panel1.Button1'
+  PropertyName: string;
+  OldValue: string;        // preview text from FormValuePreview
+  NewValue: string;
+end;
+
+TComponentChange = record
+  Path: string;            // dot-separated path to the component
+  ClassName: string;
+  ObjectKind: TObjectKind;
+end;
+
+TFormDiff = record
+  AddedComponents: TArray<TComponentChange>;
+  RemovedComponents: TArray<TComponentChange>;
+  ChangedProperties: TArray<TPropertyChange>;
+  Identical: Boolean;
+end;
+
+class function CompareForms(A, B: TFormFile): TFormDiff;
+```
+
+## Matching strategy
+
+Components are matched by name path (e.g. `Form1.Panel1.Button1`).
+A component present in B but not A is "added"; present in A but not B
+is "removed". Matched components have their properties compared by name
+-- differing values produce a `TPropertyChange` entry.
+
+This name-based matching works for the common case (same form, different
+versions). It does not handle component renames -- that would require
+heuristic matching and is out of scope for the initial implementation.
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.Diff.pas` with `CompareForms` function
+- [ ] Recursive comparison of component trees by name path
+- [ ] Property comparison using `FormValuePreview` for value text
+- [ ] Add unit to test project .dpr and .dproj
+- [ ] Tests for: identical forms, added/removed components, changed
+  properties, nested component changes, empty forms
+
+## Acceptance criteria
+
+- [ ] Identical forms produce `Identical = True` and empty arrays
+- [ ] Added/removed components detected at all nesting levels
+- [ ] Changed property values reported with old and new preview text
+- [ ] Component path accurately reflects nesting hierarchy
+- [ ] All existing tests still pass
+
+---
+Title: Form ancestry helpers -- IsInheritedForm and GetAncestorClassName
+Issue: #39
+Labels: enhancement
+Body:
+`inherited frmDerived: TfrmBase` indicates the form inherits from another.
+The parser already captures `ObjectKind = okInherited` and stores the class
+name in `TFormObject.ClassName_`, but consumers have no convenient API to
+query ancestry without inspecting AST internals.
+
+Add lightweight helper functions that make the inheritance relationship
+explicit without requiring knowledge of AST field layout.
+
+## Design
+
+```pascal
+function IsInheritedForm(Form: TFormFile): Boolean;
+function GetAncestorClassName(Form: TFormFile): string;
+```
+
+- `IsInheritedForm` returns `True` when `Form.Root.ObjectKind = okInherited`
+- `GetAncestorClassName` returns `Form.Root.ClassName_` when inherited,
+  empty string otherwise
+
+These are thin wrappers but they document intent and keep consumer code
+readable: `if IsInheritedForm(F) then Log('inherits from ' + GetAncestorClassName(F))`.
+
+## Scope exclusions
+
+- **Cross-form ancestor lookup** (loading the parent form file and following
+  the inheritance chain) is out of scope -- that requires file I/O and
+  project structure knowledge the parser should not have
+- **Inline object ancestry** (`okInline`) is a different concept and not
+  covered by these helpers
+
+## Deliverables
+
+- [ ] Add `IsInheritedForm` and `GetAncestorClassName` to a suitable unit
+  (either `Delphi.Forms.Types` or the `Delphi.Forms` facade)
+- [ ] Handle nil Form and nil Root gracefully (return False / empty string)
+- [ ] Add tests for: inherited form, non-inherited form, inline form,
+  nil input, form with no root
+
+## Acceptance criteria
+
+- [ ] `IsInheritedForm` returns True for `inherited` forms, False otherwise
+- [ ] `GetAncestorClassName` returns the class name for inherited forms
+- [ ] Nil-safe -- no access violations on nil Form or nil Root
+- [ ] All existing tests still pass
+
+---
+Title: Component reference detection and resolution
+Issue: #40
+Labels: enhancement
+Body:
+Property values often reference other components by name:
+`PopupMenu = pmMain`, `DataSource = dsCustomers`, `Action = actSave`.
+These are `fvIdentifier` values that happen to match a component name
+within the same form. Detecting and resolving these references enables
+component rename propagation (radRefactor), component-level dependency
+graphs (radCallGraph), and form-aware impact analysis.
+
+## Design
+
+```pascal
+TComponentRef = record
+  SourceComponent: TFormObject;  // component owning the property
+  Property_: TFormProperty;      // property containing the reference
+  TargetComponent: TFormObject;  // resolved target (nil if unresolved)
+  TargetName: string;            // identifier value (always set)
+end;
+
+function IsComponentReference(Value: TFormValue; Form: TFormFile): Boolean;
+function ResolveComponentReference(Value: TFormValue; Form: TFormFile): TFormObject;
+function EnumComponentReferences(Form: TFormFile): TArray<TComponentRef>;
+```
+
+## Detection heuristic
+
+An `fvIdentifier` property value is considered a component reference when
+its value matches the `Name` field of any `TFormObject` in the same form
+tree (case-insensitive). This is the same heuristic the Delphi IDE uses
+for DFM property resolution.
+
+Known limitations:
+- **Dotted identifiers** (e.g. `DataModule1.dsCustomers`) reference
+  components in other forms/data modules. These are out of scope --
+  resolution requires knowledge of multiple form files that the parser
+  does not have. `EnumComponentReferences` should still report them with
+  `TargetComponent = nil`.
+- **False positives** are possible for identifier values that happen to
+  match a component name but are actually enum values or other constants.
+  In practice this is rare in IDE-generated DFMs since the IDE uses
+  explicit enum names (e.g. `alClient`, `poScreenCenter`).
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.References.pas` with the three functions
+- [ ] Recursive search of the full component tree for name matching
+- [ ] `EnumComponentReferences` walks all objects and all properties,
+  collecting every `fvIdentifier` value that resolves
+- [ ] Add unit to test project .dpr and .dproj
+- [ ] Tests for: simple reference, nested component reference, dotted
+  cross-form reference (unresolved), non-reference identifier (enum
+  value), no references, nil inputs
+
+## Acceptance criteria
+
+- [ ] `IsComponentReference` returns True when identifier matches a
+  component name in the form
+- [ ] `ResolveComponentReference` returns the matching `TFormObject`
+- [ ] `EnumComponentReferences` finds all references recursively
+- [ ] Dotted identifiers reported with `TargetComponent = nil`
+- [ ] Non-matching identifiers (enum values etc.) not reported
+- [ ] All existing tests still pass
+
+---
+Title: Visitor pattern for AST tree traversal (Delphi.Forms.Visitor)
+Issue: #41
+Labels: enhancement
+Body:
+Multiple library units independently recurse through the `TFormFile` AST:
+`NormalizeForm`, `ComputeStatistics`, `FormObjectToJSON`, and future units
+like `EnumComponentReferences` and `CompareForms`. Each reimplements the
+same object/property/children/collection-items traversal.
+
+A standard visitor interface centralizes the walk and lets consumers focus
+on per-node logic without boilerplate recursion. It also opens the door to
+composable analyses (run multiple visitors in a single pass).
+
+## Design
+
+```pascal
+IFormVisitor = interface
+  procedure VisitObject(Obj: TFormObject; Depth: Integer);
+  procedure VisitProperty(Prop: TFormProperty; Obj: TFormObject; Depth: Integer);
+  procedure VisitValue(Value: TFormValue; Prop: TFormProperty; Depth: Integer);
+end;
+
+procedure WalkForm(Form: TFormFile; Visitor: IFormVisitor);
+procedure WalkObject(Obj: TFormObject; Visitor: IFormVisitor; Depth: Integer = 0);
+```
+
+## Key behaviors
+
+- Depth-first traversal: object, then its properties (with values), then
+  children, then recurse
+- Collection items: properties with `fvCollection` values have their
+  `CollectionItems` walked as nested objects
+- `WalkObject` is public so consumers can walk a subtree without starting
+  from the root
+- The interface uses methods rather than anonymous procs to allow stateful
+  visitors (classes that accumulate results)
+- A `TFormVisitor` base class with empty virtual methods is provided so
+  consumers only override what they need
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.Visitor.pas` with `IFormVisitor`, `TFormVisitor`
+  base class, `WalkForm`, and `WalkObject`
+- [ ] Add unit to test project .dpr and .dproj
+- [ ] Tests verifying traversal order, depth tracking, collection item
+  walking, nil/empty form handling
+- [ ] A simple test visitor (e.g. component counter) to validate the
+  pattern works end-to-end
+
+## Acceptance criteria
+
+- [ ] `WalkForm` visits every object, property, and value in the AST
+- [ ] Depth parameter accurately reflects nesting level
+- [ ] Collection items within properties are visited as objects
+- [ ] `TFormVisitor` base class compiles with no abstract method errors
+- [ ] All existing tests still pass
+
+---
+Title: Migrate NormalizeForm to use visitor pattern
+Issue: #42
+Labels: enhancement
+Body:
+Once `Delphi.Forms.Visitor` (#41) ships, migrate `NormalizeForm` in
+`Delphi.Forms.Normalize` to use the visitor for traversal instead of
+its ad-hoc recursive `NormalizeObject` procedure.
+
+The visitor walks the tree; the normalization logic just checks each
+object's properties and removes matching ones. This eliminates the
+custom recursion through children and collection items.
+
+## Scope
+
+- [ ] Implement a `TNormalizeVisitor` that removes properties per rules
+  in `VisitObject`
+- [ ] Replace `NormalizeObject` recursion with `WalkForm(Form, Visitor)`
+- [ ] `NormalizeForm` public API unchanged -- still takes `TFormFile` and
+  `TFormNormalizeRules`
+- [ ] All existing normalization tests still pass with identical behavior
+
+## Acceptance criteria
+
+- [ ] All 16 normalization tests pass unchanged
+- [ ] No ad-hoc recursion remains in `Delphi.Forms.Normalize`
+- [ ] Public API unchanged (backward compatible)
+
+---
+Title: Migrate ComputeStatistics to use visitor pattern
+Issue: #43
+Labels: enhancement
+Body:
+Once `Delphi.Forms.Visitor` (#41) ships, migrate `ComputeStatistics` in
+`Delphi.Forms.Statistics` to use the visitor for traversal instead of its
+ad-hoc recursive walker.
+
+Statistics computation is a natural fit for the visitor: `VisitObject`
+increments component counts and tracks depth, `VisitProperty` counts
+properties and accumulates name frequencies, `VisitValue` tallies value
+kind distribution.
+
+## Scope
+
+- [ ] Implement a `TStatisticsVisitor` that accumulates all statistics
+  fields in `VisitObject`, `VisitProperty`, and `VisitValue`
+- [ ] Replace ad-hoc recursion in `ComputeStatistics` with
+  `WalkForm(Form, Visitor)`
+- [ ] `ComputeStatistics` public API unchanged
+- [ ] Both single-form and batch overloads still work
+
+## Acceptance criteria
+
+- [ ] All existing statistics tests pass with identical output
+- [ ] No ad-hoc recursion remains in `Delphi.Forms.Statistics`
+- [ ] Public API unchanged (backward compatible)
+
+---
+Title: Migrate FormObjectToJSON to use visitor pattern
+Issue: #44
+Labels: enhancement
+Body:
+Once `Delphi.Forms.Visitor` (#41) ships, evaluate migrating the JSON
+serialization in `Delphi.Forms.JSON` to use the visitor for traversal.
+
+This migration is less straightforward than NormalizeForm or Statistics
+because JSON serialization builds a nested `TJSONObject` tree that mirrors
+the AST hierarchy -- the visitor's flat callback model does not naturally
+produce nested output. A stack-based approach in the visitor (push/pop
+JSON objects on enter/leave) can work but adds complexity.
+
+## Scope
+
+- [ ] Evaluate whether the visitor pattern simplifies or complicates the
+  JSON serialization code
+- [ ] If beneficial: implement a `TJsonVisitor` with a JSON object stack
+- [ ] If not beneficial: document the decision and close as won't-fix
+- [ ] If migrated: all existing JSON tests pass with identical output
+- [ ] `FormFileToJSON` and `FormObjectToJSON` public API unchanged
+
+## Acceptance criteria
+
+- [ ] Decision documented (migrate or skip with rationale)
+- [ ] If migrated: all JSON tests pass, public API unchanged
+- [ ] If skipped: ticket closed with explanation
+
+---
+Title: Migrate EnumComponentReferences to use visitor pattern
+Issue: #45
+Labels: enhancement
+Body:
+Once both `Delphi.Forms.Visitor` (#41) and component reference detection
+(#40) ship, migrate `EnumComponentReferences` in `Delphi.Forms.References`
+to use the visitor for traversal.
+
+Reference detection is a clean visitor fit: `VisitProperty` checks each
+`fvIdentifier` value against the component name index and collects matches.
+The component name index is built in a first pass (or in `VisitObject`).
+
+## Scope
+
+- [ ] Implement a `TReferenceVisitor` that builds a component name index
+  in `VisitObject` and detects references in `VisitProperty`
+- [ ] Replace ad-hoc recursion in `EnumComponentReferences` with
+  `WalkForm(Form, Visitor)`
+- [ ] Public API unchanged
+
+## Acceptance criteria
+
+- [ ] All reference detection tests pass with identical output
+- [ ] No ad-hoc recursion remains in `Delphi.Forms.References`
+- [ ] Public API unchanged (backward compatible)
+
+---
+Title: Add Parent back-reference to TFormObject
+Issue: #46
+Labels: enhancement
+Body:
+AST nodes currently have no upward reference -- `TFormObject` owns its
+`Children` list but children do not know their parent. This forces every
+consumer that needs path, depth, or ancestor information to thread the
+parent through recursion parameters.
+
+Adding a non-owning `Parent: TFormObject` field to `TFormObject` enables
+clean upward traversal and is a prerequisite for path utilities, the diff
+matching in #38, and the `ComponentPath` field in component references (#40).
+
+## Design
+
+```pascal
+TFormObject = class
+public
+  // ... existing fields ...
+  Parent: TFormObject;  // non-owning back-reference, nil for root
+end;
+```
+
+## Scope
+
+- [ ] Add `Parent: TFormObject` field to `TFormObject` (default nil)
+- [ ] `TDfmParser.ParseObject`: set `Child.Parent := Result` when adding
+  children to `Result.Children`
+- [ ] `TDfmParser.ParseCollectionValue`: set `Item.Parent := nil` for
+  collection items (they are value-owned, not object-owned)
+- [ ] `TDfmBinaryReader.ReadObject`: set `Child.Parent := Result` when
+  adding children
+- [ ] `TDfmBinaryReader.ReadValue` (vaCollection): same for collection items
+- [ ] `TFormObject.Create`: initialize `Parent := nil`
+- [ ] Verify the field is non-owning: `TFormObject.Destroy` must NOT free
+  `Parent` (it is freed by the parent's `Children` list)
+- [ ] Add tests: verify Parent is set correctly after text parse, binary
+  parse, and for programmatically constructed trees
+- [ ] Verify root object has `Parent = nil`
+
+## Acceptance criteria
+
+- [ ] `Parent` is correctly set for all children during text and binary parsing
+- [ ] Root object has `Parent = nil`
+- [ ] `Parent` is non-owning -- no double-free or memory leaks
+- [ ] Programmatically constructed trees can set `Parent` manually
+- [ ] All existing tests still pass with zero memory leaks
+
+---
+Title: Path utility functions for TFormObject (Delphi.Forms.Path)
+Issue: #47
+Labels: enhancement
+Body:
+Add utility functions for common upward-traversal operations on the
+`TFormObject` tree. Depends on the `Parent` back-reference from #46.
+
+## Design
+
+```pascal
+function GetObjectPath(Obj: TFormObject): string;
+  // Returns dot-separated path: 'frmMain.pnlMain.Button1'
+  // Walks Parent chain to root, reverses, joins with '.'
+
+function GetObjectDepth(Obj: TFormObject): Integer;
+  // Returns 0 for root, 1 for direct children, etc.
+  // Counts Parent hops to nil.
+
+function IsAncestorOf(Ancestor, Descendant: TFormObject): Boolean;
+  // Returns True if Ancestor appears in Descendant's Parent chain.
+
+function GetAncestorByClass(Obj: TFormObject; const ClassName: string): TFormObject;
+  // Walks up the Parent chain and returns the first object whose
+  // ClassName_ matches (case-insensitive). Returns nil if not found.
+```
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.Path.pas` with the four functions
+- [ ] All functions are nil-safe (nil input returns `''`, `0`, `False`,
+  or `nil` respectively)
+- [ ] Add unit to test project .dpr and .dproj
+- [ ] Tests for: root path, nested path, deep nesting depth, ancestor
+  checks (direct parent, grandparent, non-ancestor, self),
+  GetAncestorByClass match and miss, nil inputs
+
+## Acceptance criteria
+
+- [ ] `GetObjectPath` returns correct dot-separated path at all depths
+- [ ] `GetObjectDepth` returns accurate depth count
+- [ ] `IsAncestorOf` correctly identifies ancestor relationships
+- [ ] `GetAncestorByClass` finds nearest matching ancestor
+- [ ] All functions handle nil input without access violations
+- [ ] All existing tests still pass
+
+---
+Title: AST navigation helpers (Delphi.Forms.Navigation)
+Issue: #48
+Labels: enhancement
+Body:
+Consumers frequently need to locate specific objects or properties in
+the AST by name, class, or dotted path. Every consumer currently
+reimplements these lookups with ad-hoc recursion. A dedicated navigation
+unit provides these as reusable, tested building blocks.
+
+Separate from `Delphi.Forms.Types` to keep the core types unit small
+and focused on data structures.
+
+## Design
+
+```pascal
+function FindObjectByName(Root: TFormObject; const Name: string): TFormObject;
+  // Case-insensitive recursive search. Returns first match or nil.
+
+function FindObjectsByClass(Root: TFormObject; const ClassName: string): TArray<TFormObject>;
+  // Case-insensitive recursive search. Returns all matching objects.
+
+function FindProperty(Obj: TFormObject; const Name: string): TFormProperty;
+  // Case-insensitive search of Obj.Properties only (not recursive).
+  // Returns first match or nil.
+
+function FindPropertyByPath(Root: TFormObject; const Path: string): TFormProperty;
+  // Resolves dotted path like 'Memo1.Font.Color':
+  //   - Navigate to child named 'Memo1'
+  //   - Find property 'Font.Color' (dotted property name)
+  //   - If 'Font.Color' not found as a single property name, try
+  //     navigating 'Font' as a child and finding 'Color'
+  // Returns nil if any segment is unresolved.
+
+function EnumAllObjects(Root: TFormObject): TArray<TFormObject>;
+  // Flattened depth-first list of all objects in the tree (including Root).
+
+function EnumAllProperties(Root: TFormObject): TArray<TFormProperty>;
+  // Flattened list of all properties from all objects in the tree.
+```
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.Navigation.pas` with the six functions
+- [ ] All searches are case-insensitive (matching Delphi convention)
+- [ ] All functions nil-safe (nil Root returns nil or empty array)
+- [ ] `FindPropertyByPath` handles both dotted property names
+  (`Font.Color` as a single property) and object-then-property
+  navigation (`Panel1` object > `Caption` property)
+- [ ] Add unit to test project .dpr and .dproj
+- [ ] Tests for: single match, multiple matches, no match, nested
+  objects, dotted path resolution, case insensitivity, nil inputs,
+  EnumAll on empty/populated trees
+
+## Acceptance criteria
+
+- [ ] `FindObjectByName` finds objects at any depth
+- [ ] `FindObjectsByClass` returns all instances of a given class
+- [ ] `FindProperty` finds properties by name on a single object
+- [ ] `FindPropertyByPath` resolves dotted paths through the tree
+- [ ] `EnumAllObjects` returns complete flattened tree
+- [ ] `EnumAllProperties` returns all properties from all objects
+- [ ] All functions handle nil input without access violations
+- [ ] All existing tests still pass

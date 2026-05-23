@@ -2,7 +2,12 @@
 Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 
 ---
+## 0.8
+
+
 ## 0.7
+
+- All planned features in place. Starting nice-to-haves and cleanup
 
 ### 0.7.41
 
