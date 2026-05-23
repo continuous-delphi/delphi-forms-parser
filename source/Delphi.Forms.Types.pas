@@ -40,7 +40,6 @@ type
     IdentValue: string;
     SetItems: TArray<string>;
     BinaryData: TBytes;
-    BinaryHex: string;
     ListItems: TFormValueList;
     CollectionItems: TFormObjectList;
     RawText: string;

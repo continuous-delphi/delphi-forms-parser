@@ -4,6 +4,12 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.5
 
+### 0.5.31
+
+- Remove redundant `BinaryHex` field from `TFormValue`. `RawText` already
+  preserves the full `{hex}` block for text round-trip.
+[#28](https://github.com/continuous-delphi/delphi-forms-parser/issues/28)
+
 ### 0.5.30
 
 - Fix vaNil binary round-trip. Writer now emits single `vaNil` byte (1 byte)

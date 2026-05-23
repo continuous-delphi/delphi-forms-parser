@@ -169,11 +169,9 @@ begin
   V := TFormValue.Create(fvBinary);
   try
     V.BinaryData := TBytes.Create($0A, $54, $4A);
-    V.BinaryHex := '0A544A';
     Assert.AreEqual(fvBinary, V.Kind);
     Assert.AreEqual(NativeInt(3), NativeInt(Length(V.BinaryData)));
     Assert.AreEqual(Byte($0A), V.BinaryData[0]);
-    Assert.AreEqual('0A544A', V.BinaryHex);
   finally
     V.Free;
   end;
@@ -421,7 +419,6 @@ begin
 
     BinVal := TFormValue.Create(fvBinary);
     BinVal.BinaryData := TBytes.Create($FF, $D8, $FF);
-    BinVal.BinaryHex := 'FFD8FF';
     F.Root.Properties.Add(TFormProperty.Create('Picture.Data', BinVal));
 
     ListVal := TFormValue.Create(fvList);

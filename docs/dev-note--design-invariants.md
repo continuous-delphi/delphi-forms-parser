@@ -145,8 +145,6 @@ For text-parsed ASTs:
 - `RawText` on `TFormValue` preserves the original text representation of
   values (hex integers like `$FF`, negative numbers like `-12`, string
   concatenation patterns)
-- `BinaryHex` on `TFormValue` preserves the original hex layout of binary
-  data blocks (line breaks, spacing within `{ }`)
 
 For binary-parsed ASTs:
 - `OriginalValueType` preserves the binary value type tag
@@ -251,7 +249,6 @@ Batch migration workflows abort on the first malformed file.
 | `IdentValue` | `string` | Identifier text, possibly dotted (fvIdentifier) |
 | `SetItems` | `TArray<string>` | Set member names (fvSet) |
 | `BinaryData` | `TBytes` | Decoded binary bytes (fvBinary) |
-| `BinaryHex` | `string` | Original hex text between `{` and `}` for round-trip (fvBinary) |
 | `ListItems` | `TFormValueList` | Owned child values (fvList) |
 | `CollectionItems` | `TFormObjectList` | Owned collection item objects (fvCollection) |
 | `RawText` | `string` | Original text representation for round-trip (I-7) |

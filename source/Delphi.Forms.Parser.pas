@@ -500,7 +500,7 @@ begin
       if CharInSet(FullText[I], ['0'..'9', 'A'..'F', 'a'..'f']) then
         HexOnly := HexOnly + FullText[I];
     end;
-    Result.BinaryHex := Copy(FullText, 2, Length(FullText) - 2); // between { and }
+    // RawText preserves the full {hex} block including braces for round-trip
 
     B := TList<Byte>.Create;
     try

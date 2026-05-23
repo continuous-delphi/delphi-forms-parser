@@ -882,6 +882,7 @@ This violates I-2 (binary round-trip fidelity).
 ---
 Title: Remove redundant BinaryHex field (B-4)
 Issue: #28
+Status: closed
 Labels: enhancement
 Body:
 From code review `forms-parser-review.md`:
