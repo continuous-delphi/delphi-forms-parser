@@ -26,6 +26,7 @@ uses
   Delphi.Forms.Statistics in '..\source\Delphi.Forms.Statistics.pas',
   Delphi.Forms.Diagnostics in '..\source\Delphi.Forms.Diagnostics.pas',
   Delphi.Forms.Normalize in '..\source\Delphi.Forms.Normalize.pas',
+  Delphi.Forms.Visitor in '..\source\Delphi.Forms.Visitor.pas',
   Delphi.Forms in '..\source\Delphi.Forms.pas',
   Test.Delphi.Forms.Smoke in 'Test.Delphi.Forms.Smoke.pas',
   Test.Delphi.Forms.Types in 'Test.Delphi.Forms.Types.pas',
@@ -37,7 +38,8 @@ uses
   Test.Delphi.Forms.Golden in 'Test.Delphi.Forms.Golden.pas',
   Test.Delphi.Forms.RoundTrip in 'Test.Delphi.Forms.RoundTrip.pas',
   Test.Delphi.Forms.Diagnostics in 'Test.Delphi.Forms.Diagnostics.pas',
-  Test.Delphi.Forms.Normalize in 'Test.Delphi.Forms.Normalize.pas';
+  Test.Delphi.Forms.Normalize in 'Test.Delphi.Forms.Normalize.pas',
+  Test.Delphi.Forms.Visitor in 'Test.Delphi.Forms.Visitor.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

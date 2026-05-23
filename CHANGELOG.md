@@ -4,6 +4,14 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.8
 
+### 0.8.46
+
+- Add visitor pattern for AST tree traversal. `Delphi.Forms.Visitor` unit
+  with `IFormVisitor` interface, `TFormVisitor` base class, `WalkForm` and
+  `WalkObject` procedures. Depth-first traversal of objects, properties,
+  values, and collection items.
+[#41](https://github.com/continuous-delphi/delphi-forms-parser/issues/41)
+
 ### 0.8.45
 
 - Add non-owning `Parent: TFormObject` back-reference to `TFormObject`.

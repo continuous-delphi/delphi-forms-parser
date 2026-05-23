@@ -1494,6 +1494,7 @@ Known limitations:
 ---
 Title: Visitor pattern for AST tree traversal (Delphi.Forms.Visitor)
 Issue: #41
+Status: closed
 Labels: enhancement
 Body:
 Multiple library units independently recurse through the `TFormFile` AST:
