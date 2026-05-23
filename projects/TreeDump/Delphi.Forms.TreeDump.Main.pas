@@ -33,14 +33,17 @@ unit Delphi.Forms.TreeDump.Main;
 interface
 
 uses
+  System.JSON,
   Delphi.Forms.Types;
 
 type
 
+  TOutputFormat = (ofText, ofJson);
+
   TTreeDump = record
   private const
     AppName = 'Delphi.Forms.TreeDump';
-    FormatVersion = '1.0.0';
+    FormatVersion = '1.1.0';
     ExitCode_Success = 0;
     ExitCode_BadParams = 1;
     ExitCode_ParseError = 2;
@@ -51,6 +54,9 @@ type
     class function ValueKindName(Kind: TFormValueKind): string; static;
     class function ObjectKindName(Kind: TObjectKind): string; static;
     class function ValuePreview(Value: TFormValue): string; static;
+    class function ObjectToJSON(Obj: TFormObject): TJSONObject; static;
+    class function PropertyToJSON(Prop: TFormProperty): TJSONObject; static;
+    class function ValueToJSONValue(Value: TFormValue): string; static;
   public
     class function Run: Integer; static;
   end;
@@ -164,6 +170,39 @@ begin
   WriteLn(Indent + 'end');
 end;
 
+class function TTreeDump.ObjectToJSON(Obj: TFormObject): TJSONObject;
+var
+  Props: TJSONArray;
+  Children: TJSONArray;
+  I: Integer;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('objectKind', ObjectKindName(Obj.ObjectKind));
+  Result.AddPair('name', Obj.Name);
+  Result.AddPair('className', Obj.ClassName_);
+  Props := TJSONArray.Create;
+  for I := 0 to Obj.Properties.Count - 1 do
+    Props.AddElement(PropertyToJSON(Obj.Properties[I]));
+  Result.AddPair('properties', Props);
+  Children := TJSONArray.Create;
+  for I := 0 to Obj.Children.Count - 1 do
+    Children.AddElement(ObjectToJSON(Obj.Children[I]));
+  Result.AddPair('children', Children);
+end;
+
+class function TTreeDump.PropertyToJSON(Prop: TFormProperty): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('name', Prop.Name);
+  Result.AddPair('kind', ValueKindName(Prop.Value.Kind));
+  Result.AddPair('value', ValueToJSONValue(Prop.Value));
+end;
+
+class function TTreeDump.ValueToJSONValue(Value: TFormValue): string;
+begin
+  Result := ValuePreview(Value);
+end;
+
 class procedure TTreeDump.ShowUsage;
 begin
   WriteLn(AppName + ' v' + Delphi.Forms.Info.Version);
@@ -174,6 +213,7 @@ begin
   WriteLn('  ', ExtractFileName(ParamStr(0)), ' <file> [options]');
   WriteLn;
   WriteLn('Options:');
+  WriteLn('  --format:<name>       Output format: text (default) or json');
   WriteLn('  --no-values           Omit property values, show only names and types');
   WriteLn('  --round-trip          Verify text round-trip (parse -> write == original)');
   WriteLn('  -?, --help            Show this help and exit');
@@ -187,11 +227,16 @@ var
   FileName: string;
   ShowValues: Boolean;
   DoRoundTrip: Boolean;
+  OutputFmt: TOutputFormat;
   F: TFormFile;
   Data: TBytes;
-  Format: TDfmFormat;
+  DfmFmt: TDfmFormat;
+  FmtStr: string;
   Source: string;
   Output: string;
+  RoundTripResult: string;
+  JsonRoot: TJSONObject;
+  JsonSummary: TJSONObject;
 begin
   {$IFDEF DEBUG}
   ReportMemoryLeaksOnShutdown := True;
@@ -200,6 +245,8 @@ begin
   FileName := '';
   ShowValues := True;
   DoRoundTrip := False;
+  OutputFmt := ofText;
+  FmtStr := '';
 
   for I := 1 to ParamCount do
   begin
@@ -218,6 +265,8 @@ begin
       ShowValues := False
     else if SameText(Arg, '--round-trip') then
       DoRoundTrip := True
+    else if SameText(Copy(Arg, 1, 9), '--format:') then
+      FmtStr := Copy(Arg, 10, MaxInt)
     else if (Arg <> '') and (Arg[1] = '-') then
     begin
       WriteLn('error: unknown option: ', Arg);
@@ -228,6 +277,20 @@ begin
     else
     begin
       WriteLn('error: too many input files');
+      Exit(ExitCode_BadParams);
+    end;
+  end;
+
+  if FmtStr <> '' then
+  begin
+    if SameText(FmtStr, 'json') then
+      OutputFmt := ofJson
+    else if SameText(FmtStr, 'text') then
+      OutputFmt := ofText
+    else
+    begin
+      WriteLn('error: unknown format: ', FmtStr);
+      WriteLn('Supported formats: text, json');
       Exit(ExitCode_BadParams);
     end;
   end;
@@ -245,17 +308,7 @@ begin
   end;
 
   Data := TFile.ReadAllBytes(FileName);
-  Format := TDelphiFormsParser.DetectFormat(Data);
-
-  WriteLn;
-  WriteLn(AppName);
-  WriteLn('inputFile: ', FileName);
-  if Format = dfBinary then
-    WriteLn('format: binary')
-  else
-    WriteLn('format: text');
-  WriteLn('formatVersion: ', FormatVersion);
-  WriteLn;
+  DfmFmt := TDelphiFormsParser.DetectFormat(Data);
 
   F := nil;
   try
@@ -269,33 +322,81 @@ begin
       end;
     end;
 
-    WriteObject(F.Root, 0, ShowValues);
-
-    // Summary
-    WriteLn;
-    WriteLn('Properties: ', F.Root.Properties.Count, '; Children: ', F.Root.Children.Count);
-
     // Round-trip check (text format only)
-    if DoRoundTrip and (Format = dfText) then
+    RoundTripResult := '';
+    if DoRoundTrip and (DfmFmt = dfText) then
     begin
       Source := TEncoding.UTF8.GetString(Data);
-      // Normalize to CRLF
       Source := StringReplace(Source, #13#10, #10, [rfReplaceAll]);
       Source := StringReplace(Source, #10, #13#10, [rfReplaceAll]);
       Output := TDelphiFormsParser.WriteText(F);
       if Source = Output then
-        WriteLn('Round-trip: Pass')
+        RoundTripResult := 'Pass'
       else
-      begin
-        WriteLn('Round-trip: FAIL ***');
-        WriteLn('  Expected length: ', Length(Source));
-        WriteLn('  Actual length:   ', Length(Output));
-        Exit(ExitCode_RoundTripFailed);
-      end;
+        RoundTripResult := 'FAIL';
     end;
 
     Result := ExitCode_Success;
-    WriteLn('Exit Code: ', Result);
+    case OutputFmt of
+      ofText:
+      begin
+        WriteLn;
+        WriteLn(AppName);
+        WriteLn('inputFile: ', FileName);
+        if DfmFmt = dfBinary then
+          WriteLn('format: binary')
+        else
+          WriteLn('format: text');
+        WriteLn('formatVersion: ', FormatVersion);
+        WriteLn;
+
+        WriteObject(F.Root, 0, ShowValues);
+
+        WriteLn;
+        WriteLn('Properties: ', F.Root.Properties.Count, '; Children: ', F.Root.Children.Count);
+
+        if RoundTripResult <> '' then
+        begin
+          if RoundTripResult = 'Pass' then
+            WriteLn('Round-trip: Pass')
+          else
+          begin
+            WriteLn('Round-trip: FAIL ***');
+            Exit(ExitCode_RoundTripFailed);
+          end;
+        end;
+
+        Result := ExitCode_Success;
+        WriteLn('Exit Code: ', Result);
+      end;
+      ofJson:
+      begin
+        JsonRoot := TJSONObject.Create;
+        try
+          JsonRoot.AddPair('formatVersion', FormatVersion);
+          JsonRoot.AddPair('inputFile', FileName);
+          if DfmFmt = dfBinary then
+            JsonRoot.AddPair('format', 'binary')
+          else
+            JsonRoot.AddPair('format', 'text');
+          JsonRoot.AddPair('root', ObjectToJSON(F.Root));
+          JsonSummary := TJSONObject.Create;
+          JsonSummary.AddPair('properties', TJSONNumber.Create(F.Root.Properties.Count));
+          JsonSummary.AddPair('children', TJSONNumber.Create(F.Root.Children.Count));
+          if RoundTripResult <> '' then
+            JsonSummary.AddPair('roundTrip', RoundTripResult);
+          JsonRoot.AddPair('summary', JsonSummary);
+          WriteLn(JsonRoot.Format(2));
+        finally
+          JsonRoot.Free;
+        end;
+
+        if RoundTripResult = 'FAIL' then
+          Exit(ExitCode_RoundTripFailed);
+
+        Result := ExitCode_Success;
+      end;
+    end;
   finally
     F.Free;
   end;

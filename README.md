@@ -20,10 +20,15 @@ and binary formats. Produces a typed AST with full round-trip fidelity.
   versions
 - **Text writer** -- serialize AST back to text DFM with byte-for-byte
   round-trip fidelity
-- **Binary writer** -- serialize AST back to binary DFM format
+- **Binary writer** -- serialize AST back to binary DFM format with original
+  value type tag preservation
 - **Format detection** -- auto-detect text vs binary format
-- **Cross-format conversion** -- binary-to-text conversion for migration
-  workflows
+- **Encoding detection** -- auto-detect UTF-8 BOM; explicit `TEncoding`
+  overloads for legacy ANSI-encoded files
+- **Cross-format conversion** -- binary-to-text and text-to-binary conversion
+  for migration workflows
+- **Typed collection items** -- supports `item ClassName ... end` syntax
+- **TreeDump utility** -- CLI tool for inspecting DFM/FMX component trees
 
 ## Quick start
 
@@ -35,7 +40,7 @@ uses
 var
   FormFile: TFormFile;
 begin
-  // Parse a text DFM file
+  // Parse a DFM file (auto-detects text vs binary format)
   FormFile := TDelphiFormsParser.ParseFile('MyForm.dfm');
   try
     // Access the component tree
@@ -48,6 +53,26 @@ begin
   finally
     FormFile.Free;
   end;
+end;
+```
+
+### Legacy ANSI files
+
+For pre-Unicode Delphi projects (Delphi 7 through 2007) with ANSI-encoded
+DFM files:
+
+```pascal
+FormFile := TDelphiFormsParser.ParseFile('LegacyForm.dfm', TEncoding.ANSI);
+```
+
+### Binary-to-text conversion
+
+```pascal
+var
+  TextDfm: string;
+begin
+  TextDfm := TDelphiFormsParser.BinaryToText(TFile.ReadAllBytes('OldForm.dfm'));
+  TFile.WriteAllText('OldForm.dfm', TextDfm);
 end;
 ```
 
@@ -83,6 +108,46 @@ Binary DFM ---> TDfmBinaryReader -----------------------------------^
 TFormFile ---> TDfmTextWriter ---> text DFM output                  |
 TFormFile ---> TDfmBinaryWriter ---> binary DFM output              |
 ```
+
+## Facade API
+
+| Method | Description |
+|--------|-------------|
+| `ParseFile(FileName)` | Auto-detect format, parse file |
+| `ParseFile(FileName, Encoding)` | Parse with explicit encoding |
+| `ParseText(Source)` | Parse text DFM string |
+| `ParseBinary(Data)` | Parse TPF0 binary bytes |
+| `ParseBytes(Data)` | Auto-detect format from bytes |
+| `ParseBytes(Data, Encoding)` | Auto-detect with explicit encoding |
+| `WriteText(FormFile)` | Serialize AST to text DFM |
+| `WriteBinary(FormFile)` | Serialize AST to TPF0 binary |
+| `BinaryToText(Data)` | Convert binary DFM to text |
+| `TextToBinary(Source)` | Convert text DFM to binary |
+| `DetectFormat(Data)` | Returns `dfText` or `dfBinary` |
+| `IsBinaryDfm(Data)` | Check for TPF0 signature |
+
+## TreeDump utility
+
+CLI tool for inspecting DFM/FMX component trees:
+
+```
+Delphi.Forms.TreeDump.exe MyForm.dfm --round-trip
+
+object frmMain: TfrmMain
+  Left = 0 [fvInteger]
+  Caption = 'Hello' [fvString]
+  Font.Style = [] [fvSet]
+  object Button1: TButton
+    Caption = 'Click' [fvString]
+  end
+end
+
+Properties: 3; Children: 1
+Round-trip: Pass
+Exit Code: 0
+```
+
+Options: `--no-values`, `--round-trip`, `-v`, `-?`
 
 ---
 

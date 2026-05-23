@@ -4,6 +4,13 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.4
 
+### 0.4.25
+
+- Add `--format:json` output to TreeDump utility. Produces structured JSON
+  with formatVersion, inputFile, format, root object tree, and summary stats.
+  Round-trip result included when `--round-trip` is active. FormatVersion
+  bumped to 1.1.0.
+[#24](https://github.com/continuous-delphi/delphi-forms-parser/issues/24)
 
 ## 0.3
 

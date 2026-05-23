@@ -697,3 +697,26 @@ could theoretically hit this.
 
 - [ ] WriteShortString raises a clear exception for strings > 255 bytes
 - [ ] All existing tests still pass
+
+---
+Title: Add JSON output format to TreeDump utility
+Issue: #24
+Status: closed
+Labels: enhancement
+Body:
+The delphi-parser TreeDump has `--format=json` which makes its output
+consumable by other tools (analysis scripts, CI pipelines, web dashboards).
+Add the same capability to the delphi-forms-parser TreeDump.
+
+## Deliverables
+
+- [ ] Add `--format:json` option to TreeDump (default remains `text`)
+- [ ] JSON output includes: root object, nested children, properties with
+  names/values/kinds, object kinds, class names, summary stats
+- [ ] Round-trip result included in JSON when `--round-trip` is active
+
+## Acceptance criteria
+
+- [ ] `--format:json` produces valid JSON parseable by standard tools
+- [ ] `--format:text` remains the default and is unchanged
+- [ ] All existing tests still pass
