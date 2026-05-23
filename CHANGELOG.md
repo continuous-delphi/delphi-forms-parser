@@ -4,6 +4,12 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.8
 
+### 0.8.44
+
+- Add form ancestry helpers `IsInheritedForm` and `GetAncestorClassName`
+  to the facade. Nil-safe, returns ancestor class name for inherited forms.
+[#39](https://github.com/continuous-delphi/delphi-forms-parser/issues/39)
+
 ### 0.8.43
 
 - Human-readable token kind names in parser error messages. Add

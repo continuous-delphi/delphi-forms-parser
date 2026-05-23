@@ -1377,6 +1377,7 @@ heuristic matching and is out of scope for the initial implementation.
 ---
 Title: Form ancestry helpers -- IsInheritedForm and GetAncestorClassName
 Issue: #39
+Status: closed
 Labels: enhancement
 Body:
 `inherited frmDerived: TfrmBase` indicates the form inherits from another.

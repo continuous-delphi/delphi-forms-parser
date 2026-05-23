@@ -43,6 +43,9 @@ type
     class function IsBinaryDfm(const Data: TBytes): Boolean;
   end;
 
+function IsInheritedForm(Form: TFormFile): Boolean;
+function GetAncestorClassName(Form: TFormFile): string;
+
 implementation
 
 { TDelphiFormsParser }
@@ -293,6 +296,21 @@ begin
   finally
     F.Free;
   end;
+end;
+
+{ Form ancestry helpers }
+
+function IsInheritedForm(Form: TFormFile): Boolean;
+begin
+  Result := (Form <> nil) and (Form.Root <> nil) and (Form.Root.ObjectKind = okInherited);
+end;
+
+function GetAncestorClassName(Form: TFormFile): string;
+begin
+  if IsInheritedForm(Form) then
+    Result := Form.Root.ClassName_
+  else
+    Result := '';
 end;
 
 end.

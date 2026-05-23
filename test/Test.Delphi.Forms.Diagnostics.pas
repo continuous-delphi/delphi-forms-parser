@@ -73,6 +73,34 @@ type
     procedure ParseFileWithDiagnostics_ValidGoldenFile;
   end;
 
+  [TestFixture]
+  TFormAncestryTests = class
+  public
+    [Test]
+    procedure InheritedForm_ReturnsTrue;
+
+    [Test]
+    procedure NonInheritedForm_ReturnsFalse;
+
+    [Test]
+    procedure InlineForm_ReturnsFalse;
+
+    [Test]
+    procedure NilForm_ReturnsFalse;
+
+    [Test]
+    procedure FormWithNoRoot_ReturnsFalse;
+
+    [Test]
+    procedure InheritedForm_ReturnsClassName;
+
+    [Test]
+    procedure NonInheritedForm_ReturnsEmpty;
+
+    [Test]
+    procedure NilForm_ReturnsEmpty;
+  end;
+
 implementation
 
 uses
@@ -505,6 +533,105 @@ begin
   finally
     R.Form.Free;
   end;
+end;
+
+{ TFormAncestryTests }
+
+procedure TFormAncestryTests.InheritedForm_ReturnsTrue;
+var
+  F: TFormFile;
+begin
+  F := TDelphiFormsParser.ParseText(
+    'inherited frmChild: TfrmBase'#13#10 +
+    '  Caption = ''Child'''#13#10 +
+    'end'#13#10);
+  try
+    Assert.IsTrue(IsInheritedForm(F));
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TFormAncestryTests.NonInheritedForm_ReturnsFalse;
+var
+  F: TFormFile;
+begin
+  F := TDelphiFormsParser.ParseText(
+    'object Form1: TForm1'#13#10 +
+    '  Caption = ''Main'''#13#10 +
+    'end'#13#10);
+  try
+    Assert.IsFalse(IsInheritedForm(F));
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TFormAncestryTests.InlineForm_ReturnsFalse;
+var
+  F: TFormFile;
+begin
+  F := TDelphiFormsParser.ParseText(
+    'inline frmInline: TfrmInline'#13#10 +
+    '  Caption = ''Inline'''#13#10 +
+    'end'#13#10);
+  try
+    Assert.IsFalse(IsInheritedForm(F));
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TFormAncestryTests.NilForm_ReturnsFalse;
+begin
+  Assert.IsFalse(IsInheritedForm(nil));
+end;
+
+procedure TFormAncestryTests.FormWithNoRoot_ReturnsFalse;
+var
+  F: TFormFile;
+begin
+  F := TFormFile.Create;
+  try
+    Assert.IsFalse(IsInheritedForm(F));
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TFormAncestryTests.InheritedForm_ReturnsClassName;
+var
+  F: TFormFile;
+begin
+  F := TDelphiFormsParser.ParseText(
+    'inherited frmChild: TfrmBase'#13#10 +
+    '  Caption = ''Child'''#13#10 +
+    'end'#13#10);
+  try
+    Assert.AreEqual('TfrmBase', GetAncestorClassName(F));
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TFormAncestryTests.NonInheritedForm_ReturnsEmpty;
+var
+  F: TFormFile;
+begin
+  F := TDelphiFormsParser.ParseText(
+    'object Form1: TForm1'#13#10 +
+    '  Caption = ''Main'''#13#10 +
+    'end'#13#10);
+  try
+    Assert.AreEqual('', GetAncestorClassName(F));
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TFormAncestryTests.NilForm_ReturnsEmpty;
+begin
+  Assert.AreEqual('', GetAncestorClassName(nil));
 end;
 
 end.
