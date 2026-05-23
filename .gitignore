@@ -116,3 +116,4 @@ TestInsightSettings.ini
 coverage.db
 .coverage-settings
 *.md
+*.txt
