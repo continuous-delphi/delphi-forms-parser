@@ -1003,3 +1003,75 @@ explicit `TEncoding` overloads remain available for full control.
 - [ ] UTF-8 DFM files continue to parse correctly
 - [ ] Explicit `ParseFile(name, TEncoding.UTF8)` does NOT fall back
 - [ ] All existing tests still pass
+
+---
+Title: Extract AST JSON serialization to Delphi.Forms.JSON library unit
+Issue: #32
+Status: closed
+Labels: enhancement
+Body:
+TreeDump contains `ObjectToJSON`, `PropertyToJSON`, and `ValueToJSONValue`
+methods that serialize the AST to JSON. These should be library-level so
+any consumer can serialize a `TFormFile` to JSON without depending on the
+TreeDump utility.
+
+Parallels the existing pattern: `TextWriter` = AST to text DFM,
+`BinaryWriter` = AST to binary DFM, `JSON` = AST to JSON.
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.JSON.pas` -- standalone functions:
+  - `FormFileToJSON(FormFile: TFormFile): TJSONObject`
+  - `FormObjectToJSON(Obj: TFormObject): TJSONObject`
+  - `FormPropertyToJSON(Prop: TFormProperty): TJSONObject`
+  - `FormValueToJSON(Value: TFormValue): string` (preview text)
+- [ ] Migrate TreeDump's `ObjectToJSON`/`PropertyToJSON`/`ValueToJSONValue`
+  to call the library functions
+- [ ] Add unit to test project .dpr and .dproj
+- [ ] Consider adding `class function WriteJSON(FormFile): string` to the
+  `TDelphiFormsParser` facade for convenience
+
+## Acceptance criteria
+
+- [ ] TreeDump `--format:json` produces identical output via library calls
+- [ ] Library unit is usable independently of TreeDump
+- [ ] All existing tests still pass
+
+---
+Title: Extract statistics computation to Delphi.Forms.Statistics library unit
+Issue: #33
+Labels: enhancement
+Body:
+FormStats computes component/property statistics inline in its Main unit.
+This logic should be library-level so any consumer (CI dashboards, analysis
+scripts, IDE plugins) can compute statistics without depending on the
+FormStats CLI.
+
+## Deliverables
+
+- [ ] `source/Delphi.Forms.Statistics.pas` with:
+  - `TClassUsage = record Name: string; Count: Integer; end`
+  - `TPropertyUsage = record Name: string; Count: Integer; end`
+  - `TFormStatistics = record` with:
+    - `ComponentCount`, `UniqueClassCount`, `PropertyCount`: Integer
+    - `MaxDepth`: Integer
+    - `AvgDepth`: Double
+    - `ValueTypeCounts`: array[TFormValueKind] of Integer
+    - `ObjectKindCounts`: array[TObjectKind] of Integer
+    - `TopClasses`: TArray<TClassUsage>
+    - `TopProperties`: TArray<TPropertyUsage>
+    - `function ToJSON: TJSONObject`
+  - `class function ComputeStatistics(Form: TFormFile; TopN: Integer = 10): TFormStatistics`
+  - Overload: `class function ComputeStatistics(Forms: TArray<TFormFile>; TopN: Integer = 10): TFormStatistics`
+- [ ] Migrate FormStats CLI to call `ComputeStatistics` + `ToJSON` instead
+  of computing inline
+- [ ] Add unit to test project .dpr and .dproj
+- [ ] Add basic unit tests for `ComputeStatistics`
+
+## Acceptance criteria
+
+- [ ] FormStats CLI produces identical output via library calls
+- [ ] Library unit is usable independently of FormStats CLI
+- [ ] `ToJSON` produces valid JSON matching current FormStats JSON output
+- [ ] Batch overload aggregates statistics across multiple forms
+- [ ] All existing tests still pass

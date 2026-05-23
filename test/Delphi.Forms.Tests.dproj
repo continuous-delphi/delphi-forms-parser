@@ -114,6 +114,7 @@
         <DCCReference Include="..\source\Delphi.Forms.TextWriter.pas"/>
         <DCCReference Include="..\source\Delphi.Forms.BinaryReader.pas"/>
         <DCCReference Include="..\source\Delphi.Forms.BinaryWriter.pas"/>
+        <DCCReference Include="..\source\Delphi.Forms.JSON.pas"/>
         <DCCReference Include="..\source\Delphi.Forms.pas"/>
         <DCCReference Include="Test.Delphi.Forms.Smoke.pas"/>
         <DCCReference Include="Test.Delphi.Forms.Types.pas"/>

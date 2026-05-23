@@ -51,12 +51,6 @@ type
   private
     class procedure ShowUsage; static;
     class procedure WriteObject(Obj: TFormObject; Depth: Integer; ShowValues: Boolean); static;
-    class function ValueKindName(Kind: TFormValueKind): string; static;
-    class function ObjectKindName(Kind: TObjectKind): string; static;
-    class function ValuePreview(Value: TFormValue): string; static;
-    class function ObjectToJSON(Obj: TFormObject): TJSONObject; static;
-    class function PropertyToJSON(Prop: TFormProperty): TJSONObject; static;
-    class function ValueToJSONValue(Value: TFormValue): string; static;
   public
     class function Run: Integer; static;
   end;
@@ -67,83 +61,8 @@ uses
   System.SysUtils,
   System.IOUtils,
   Delphi.Forms,
+  Delphi.Forms.JSON,
   Delphi.Forms.Info;
-
-class function TTreeDump.ObjectKindName(Kind: TObjectKind): string;
-begin
-  case Kind of
-    okObject: Result := 'object';
-    okInherited: Result := 'inherited';
-    okInline: Result := 'inline';
-  else
-    Result := 'object';
-  end;
-end;
-
-class function TTreeDump.ValueKindName(Kind: TFormValueKind): string;
-begin
-  case Kind of
-    fvInteger: Result := 'fvInteger';
-    fvFloat: Result := 'fvFloat';
-    fvString: Result := 'fvString';
-    fvBoolean: Result := 'fvBoolean';
-    fvIdentifier: Result := 'fvIdentifier';
-    fvSet: Result := 'fvSet';
-    fvBinary: Result := 'fvBinary';
-    fvList: Result := 'fvList';
-    fvCollection: Result := 'fvCollection';
-  else
-    Result := '?';
-  end;
-end;
-
-class function TTreeDump.ValuePreview(Value: TFormValue): string;
-const
-  MaxLen = 60;
-var
-  I: Integer;
-begin
-  case Value.Kind of
-    fvInteger:
-      if Value.RawText <> '' then
-        Result := Value.RawText
-      else
-        Result := IntToStr(Value.IntValue);
-    fvFloat:
-      if Value.RawText <> '' then
-        Result := Value.RawText
-      else
-        Result := FloatToStr(Value.FloatValue, TFormatSettings.Invariant);
-    fvString:
-    begin
-      Result := '''' + Copy(Value.StringValue, 1, MaxLen) + '''';
-      if Length(Value.StringValue) > MaxLen then
-        Result := Result + '...';
-    end;
-    fvBoolean:
-      if Value.BoolValue then Result := 'True' else Result := 'False';
-    fvIdentifier:
-      Result := Value.IdentValue;
-    fvSet:
-    begin
-      Result := '[';
-      for I := 0 to Length(Value.SetItems) - 1 do
-      begin
-        if I > 0 then Result := Result + ', ';
-        Result := Result + Value.SetItems[I];
-      end;
-      Result := Result + ']';
-    end;
-    fvBinary:
-      Result := Format('{%d bytes}', [Length(Value.BinaryData)]);
-    fvList:
-      Result := Format('(%d items)', [Value.ListItems.Count]);
-    fvCollection:
-      Result := Format('<%d items>', [Value.CollectionItems.Count]);
-  else
-    Result := '?';
-  end;
-end;
 
 class procedure TTreeDump.WriteObject(Obj: TFormObject; Depth: Integer; ShowValues: Boolean);
 var
@@ -154,53 +73,20 @@ begin
   Indent := StringOfChar(' ', Depth * 2);
   PropIndent := StringOfChar(' ', (Depth + 1) * 2);
 
-  WriteLn(Indent + ObjectKindName(Obj.ObjectKind) + ' ' + Obj.Name + ': ' + Obj.ClassName_);
+  WriteLn(Indent + FormObjectKindName(Obj.ObjectKind) + ' ' + Obj.Name + ': ' + Obj.ClassName_);
 
   for I := 0 to Obj.Properties.Count - 1 do
   begin
     if ShowValues then
-      WriteLn(PropIndent + Obj.Properties[I].Name + ' = ' + ValuePreview(Obj.Properties[I].Value) + ' [' + ValueKindName(Obj.Properties[I].Value.Kind) + ']')
+      WriteLn(PropIndent + Obj.Properties[I].Name + ' = ' + FormValuePreview(Obj.Properties[I].Value) + ' [' + FormValueKindName(Obj.Properties[I].Value.Kind) + ']')
     else
-      WriteLn(PropIndent + Obj.Properties[I].Name + ' [' + ValueKindName(Obj.Properties[I].Value.Kind) + ']');
+      WriteLn(PropIndent + Obj.Properties[I].Name + ' [' + FormValueKindName(Obj.Properties[I].Value.Kind) + ']');
   end;
 
   for I := 0 to Obj.Children.Count - 1 do
     WriteObject(Obj.Children[I], Depth + 1, ShowValues);
 
   WriteLn(Indent + 'end');
-end;
-
-class function TTreeDump.ObjectToJSON(Obj: TFormObject): TJSONObject;
-var
-  Props: TJSONArray;
-  Children: TJSONArray;
-  I: Integer;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('objectKind', ObjectKindName(Obj.ObjectKind));
-  Result.AddPair('name', Obj.Name);
-  Result.AddPair('className', Obj.ClassName_);
-  Props := TJSONArray.Create;
-  for I := 0 to Obj.Properties.Count - 1 do
-    Props.AddElement(PropertyToJSON(Obj.Properties[I]));
-  Result.AddPair('properties', Props);
-  Children := TJSONArray.Create;
-  for I := 0 to Obj.Children.Count - 1 do
-    Children.AddElement(ObjectToJSON(Obj.Children[I]));
-  Result.AddPair('children', Children);
-end;
-
-class function TTreeDump.PropertyToJSON(Prop: TFormProperty): TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('name', Prop.Name);
-  Result.AddPair('kind', ValueKindName(Prop.Value.Kind));
-  Result.AddPair('value', ValueToJSONValue(Prop.Value));
-end;
-
-class function TTreeDump.ValueToJSONValue(Value: TFormValue): string;
-begin
-  Result := ValuePreview(Value);
 end;
 
 class procedure TTreeDump.ShowUsage;
@@ -379,7 +265,7 @@ begin
             JsonRoot.AddPair('format', 'binary')
           else
             JsonRoot.AddPair('format', 'text');
-          JsonRoot.AddPair('root', ObjectToJSON(F.Root));
+          JsonRoot.AddPair('root', FormObjectToJSON(F.Root));
           JsonSummary := TJSONObject.Create;
           JsonSummary.AddPair('properties', TJSONNumber.Create(F.Root.Properties.Count));
           JsonSummary.AddPair('children', TJSONNumber.Create(F.Root.Children.Count));

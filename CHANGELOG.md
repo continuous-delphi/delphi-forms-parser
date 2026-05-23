@@ -4,6 +4,12 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.6
 
+### 0.6.34
+
+- Extract AST JSON serialization to `Delphi.Forms.JSON.pas` library unit.
+  `FormFileToJSON`, `FormObjectToJSON`, `FormPropertyToJSON`, `FormValuePreview`,
+  `FormValueKindName`, `FormObjectKindName`. TreeDump migrated to call library.
+[#32](https://github.com/continuous-delphi/delphi-forms-parser/issues/32)
 
 ## 0.5
 
