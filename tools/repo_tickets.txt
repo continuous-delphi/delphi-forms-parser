@@ -1716,6 +1716,7 @@ end;
 ---
 Title: Path utility functions for TFormObject (Delphi.Forms.Path)
 Issue: #47
+Status: closed
 Labels: enhancement
 Body:
 Add utility functions for common upward-traversal operations on the

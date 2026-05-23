@@ -4,6 +4,13 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.8
 
+### 0.8.47
+
+- Add path utility functions in `Delphi.Forms.Path`: `GetObjectPath`,
+  `GetObjectDepth`, `IsAncestorOf`, `GetAncestorByClass`. All nil-safe,
+  use the `Parent` back-reference for upward traversal.
+[#47](https://github.com/continuous-delphi/delphi-forms-parser/issues/47)
+
 ### 0.8.46
 
 - Add visitor pattern for AST tree traversal. `Delphi.Forms.Visitor` unit
