@@ -24,6 +24,7 @@ type
     procedure Expect(Kind: TDfmTokenKind);
     function MatchIdent(const Text: string): Boolean;
     function IsObjectKeyword: Boolean;
+    function CurrentOffset: Integer;
     function ParseObject: TFormObject;
     function ParseProperty: TFormProperty;
     function ParseDottedName: string;
@@ -99,6 +100,14 @@ begin
   Result := not AtEnd and (CurrentKind = dtkIdentifier) and (SameText(CurrentText, 'object') or SameText(CurrentText, 'inherited') or SameText(CurrentText, 'inline'));
 end;
 
+function TDfmParser.CurrentOffset: Integer;
+begin
+  if AtEnd then
+    Result := -1
+  else
+    Result := Current.StartOffset;
+end;
+
 function TDfmParser.ParseObject: TFormObject;
 var
   KwText: string;
@@ -106,6 +115,7 @@ begin
   Result := TFormObject.Create;
   try
     SkipTrivia;
+    Result.SourceStart := CurrentOffset;
 
     // object/inherited/inline keyword
     KwText := CurrentText;
@@ -147,7 +157,12 @@ begin
 
     // Consume 'end'
     if not AtEnd and MatchIdent('end') then
+    begin
+      Result.SourceEnd := Current.StartOffset + Length(Current.Text);
       Advance;
+    end
+    else
+      Result.SourceEnd := CurrentOffset;
     SkipTrivia;
   except
     Result.Free;
@@ -159,14 +174,18 @@ function TDfmParser.ParseProperty: TFormProperty;
 var
   PropName: string;
   Val: TFormValue;
+  StartOfs: Integer;
 begin
+  StartOfs := CurrentOffset;
   PropName := ParseDottedName;
   SkipTrivia;
   Expect(dtkEquals);
   SkipTrivia;
   Val := ParseValue;
-  SkipTrivia;
   Result := TFormProperty.Create(PropName, Val);
+  Result.SourceStart := StartOfs;
+  Result.SourceEnd := Val.SourceEnd;
+  SkipTrivia;
 end;
 
 function TDfmParser.ParseDottedName: string;
@@ -183,7 +202,10 @@ begin
 end;
 
 function TDfmParser.ParseValue: TFormValue;
+var
+  StartOfs: Integer;
 begin
+  StartOfs := CurrentOffset;
   case CurrentKind of
     dtkInteger:
     begin
@@ -282,6 +304,9 @@ begin
   else
     raise Exception.CreateFmt('Unexpected token kind %d at line %d col %d', [Ord(CurrentKind), Current.Line, Current.Col]);
   end;
+  Result.SourceStart := StartOfs;
+  if Result.SourceEnd < 0 then
+    Result.SourceEnd := CurrentOffset;
 end;
 
 function TDfmParser.ParseStringValue: TFormValue;

@@ -905,6 +905,7 @@ From code review `forms-parser-review.md`:
 ---
 Title: Add source position tracking to AST nodes (A-1)
 Issue: #29
+Status: closed
 Labels: enhancement
 Body:
 From code review `forms-parser-review.md`:

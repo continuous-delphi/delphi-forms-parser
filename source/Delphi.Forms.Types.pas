@@ -33,6 +33,8 @@ type
   TFormValue = class
   public
     Kind: TFormValueKind;
+    SourceStart: Integer;
+    SourceEnd: Integer;
     IntValue: Int64;
     FloatValue: Extended;
     StringValue: string;
@@ -53,6 +55,8 @@ type
   public
     Name: string;
     Value: TFormValue;
+    SourceStart: Integer;
+    SourceEnd: Integer;
     constructor Create(const AName: string; AValue: TFormValue);
     destructor Destroy; override;
   end;
@@ -63,6 +67,8 @@ type
     Name: string;
     ClassName_: string;
     ItemIndex: Int64;
+    SourceStart: Integer;
+    SourceEnd: Integer;
     Properties: TFormPropertyList;
     Children: TFormObjectList;
     constructor Create;
@@ -84,6 +90,8 @@ constructor TFormValue.Create(AKind: TFormValueKind);
 begin
   inherited Create;
   Kind := AKind;
+  SourceStart := -1;
+  SourceEnd := -1;
   case AKind of
     fvList:
       ListItems := TFormValueList.Create;
@@ -106,6 +114,8 @@ begin
   inherited Create;
   Name := AName;
   Value := AValue;
+  SourceStart := -1;
+  SourceEnd := -1;
 end;
 
 destructor TFormProperty.Destroy;
@@ -120,6 +130,8 @@ constructor TFormObject.Create;
 begin
   inherited Create;
   ItemIndex := -1;
+  SourceStart := -1;
+  SourceEnd := -1;
   Properties := TFormPropertyList.Create;
   Children := TFormObjectList.Create;
 end;

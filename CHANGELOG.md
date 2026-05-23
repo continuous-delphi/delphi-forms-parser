@@ -4,6 +4,13 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.5
 
+### 0.5.32
+
+- Add source position tracking (SourceStart/SourceEnd) to TFormObject,
+  TFormProperty, and TFormValue. Parser populates 0-based offsets from tokens.
+  Defaults to -1 for binary-parsed and programmatically constructed ASTs.
+[#29](https://github.com/continuous-delphi/delphi-forms-parser/issues/29)
+
 ### 0.5.31
 
 - Remove redundant `BinaryHex` field from `TFormValue`. `RawText` already

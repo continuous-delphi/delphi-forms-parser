@@ -86,6 +86,16 @@ type
     procedure Parse_IncompleteHexData;
     [Test]
     procedure Parse_CharLiteralLargeValue;
+    [Test]
+    procedure SourcePos_Object;
+    [Test]
+    procedure SourcePos_Property;
+    [Test]
+    procedure SourcePos_Value;
+    [Test]
+    procedure SourcePos_NestedChild;
+    [Test]
+    procedure SourcePos_BinaryParsed_DefaultsToNeg1;
   end;
 
 implementation
@@ -666,6 +676,96 @@ begin
   try
     Assert.AreEqual(fvString, F.Root.Properties[0].Value.Kind);
     Assert.AreEqual('A', F.Root.Properties[0].Value.StringValue);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmParserTests.SourcePos_Object;
+var
+  F: TFormFile;
+  // 'object f: TF\r\nend\r\n'
+  //  0123456789...
+begin
+  F := FParser.Parse('object f: TF'#13#10'end'#13#10);
+  try
+    Assert.AreEqual(0, F.Root.SourceStart, 'Object start');
+    Assert.IsTrue(F.Root.SourceEnd > F.Root.SourceStart, 'Object end > start');
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmParserTests.SourcePos_Property;
+var
+  F: TFormFile;
+  // 'object f: TF\r\n  Left = 0\r\nend\r\n'
+  //  0         1         2
+  //  0123456789012345678901234567
+begin
+  F := FParser.Parse('object f: TF'#13#10'  Left = 0'#13#10'end'#13#10);
+  try
+    // 'object f: TF' = 12 chars, CRLF = 2, '  ' = 2 => 'L' at offset 16
+    Assert.AreEqual(16, F.Root.Properties[0].SourceStart, 'Property start');
+    Assert.IsTrue(F.Root.Properties[0].SourceEnd > 16, 'Property end > start');
+    // 'Left = ' = 7 chars from offset 16 => '0' at offset 23
+    Assert.AreEqual(23, F.Root.Properties[0].Value.SourceStart, 'Value start');
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmParserTests.SourcePos_Value;
+var
+  F: TFormFile;
+begin
+  F := FParser.Parse('object f: TF'#13#10'  Caption = ''Hello'''#13#10'end'#13#10);
+  try
+    // Value is 'Hello' string starting at the opening quote
+    Assert.IsTrue(F.Root.Properties[0].Value.SourceStart >= 0, 'String value has source position');
+    Assert.IsTrue(F.Root.Properties[0].Value.SourceEnd > F.Root.Properties[0].Value.SourceStart, 'String value end > start');
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmParserTests.SourcePos_NestedChild;
+var
+  F: TFormFile;
+begin
+  F := FParser.Parse(
+    'object frmMain: TfrmMain'#13#10 +
+    '  object Button1: TButton'#13#10 +
+    '    Caption = ''Click'''#13#10 +
+    '  end'#13#10 +
+    'end'#13#10);
+  try
+    Assert.AreEqual(0, F.Root.SourceStart, 'Root start = 0');
+    Assert.IsTrue(F.Root.Children[0].SourceStart > 0, 'Child start > 0');
+    Assert.IsTrue(F.Root.Children[0].SourceEnd > F.Root.Children[0].SourceStart, 'Child end > start');
+    Assert.IsTrue(F.Root.Children[0].Properties[0].SourceStart > F.Root.Children[0].SourceStart, 'Child property start > child start');
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TDfmParserTests.SourcePos_BinaryParsed_DefaultsToNeg1;
+var
+  F: TFormFile;
+  V: TFormValue;
+begin
+  // Programmatically constructed (not from text parser) should have -1
+  F := TFormFile.Create;
+  try
+    F.Root := TFormObject.Create;
+    F.Root.Name := 'f';
+    F.Root.ClassName_ := 'TF';
+    V := TFormValue.Create(fvInteger);
+    V.IntValue := 0;
+    F.Root.Properties.Add(TFormProperty.Create('Left', V));
+    Assert.AreEqual(-1, F.Root.SourceStart, 'Constructed object has no source position');
+    Assert.AreEqual(-1, F.Root.Properties[0].SourceStart, 'Constructed property has no source position');
+    Assert.AreEqual(-1, F.Root.Properties[0].Value.SourceStart, 'Constructed value has no source position');
   finally
     F.Free;
   end;
