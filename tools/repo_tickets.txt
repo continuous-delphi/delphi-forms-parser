@@ -1428,6 +1428,7 @@ readable: `if IsInheritedForm(F) then Log('inherits from ' + GetAncestorClassNam
 ---
 Title: Component reference detection and resolution
 Issue: #40
+Status: closed
 Labels: enhancement
 Body:
 Property values often reference other components by name:

@@ -4,6 +4,15 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.8
 
+### 0.8.49
+
+- Add component reference detection and resolution in
+  `Delphi.Forms.References`. `IsComponentReference`, `ResolveComponentReference`,
+  `EnumComponentReferences` detect `fvIdentifier` values that match component
+  names within the same form. Dotted cross-form references reported as
+  unresolved. Non-matching identifiers (enum values) excluded.
+[#40](https://github.com/continuous-delphi/delphi-forms-parser/issues/40)
+
 ### 0.8.48
 
 - Add AST navigation helpers in `Delphi.Forms.Navigation`:
