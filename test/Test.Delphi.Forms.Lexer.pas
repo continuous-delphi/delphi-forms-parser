@@ -544,7 +544,54 @@ begin
   AssertRoundTrip('Left = 0' + #13#10 + '~end');
 end;
 
+{ TTokenKindToStringTests }
+
+type
+  [TestFixture]
+  TTokenKindToStringTests = class
+  public
+    [Test]
+    procedure AllKinds_ReturnNonEmpty;
+
+    [Test]
+    procedure KnownKinds_ReturnExpected;
+  end;
+
+procedure TTokenKindToStringTests.AllKinds_ReturnNonEmpty;
+var
+  Kind: TDfmTokenKind;
+begin
+  for Kind := Low(TDfmTokenKind) to High(TDfmTokenKind) do
+    Assert.IsNotEmpty(TokenKindToString(Kind), 'TokenKindToString should return non-empty for ' + IntToStr(Ord(Kind)));
+end;
+
+procedure TTokenKindToStringTests.KnownKinds_ReturnExpected;
+begin
+  Assert.AreEqual('identifier', TokenKindToString(dtkIdentifier));
+  Assert.AreEqual('integer', TokenKindToString(dtkInteger));
+  Assert.AreEqual('float', TokenKindToString(dtkFloat));
+  Assert.AreEqual('string', TokenKindToString(dtkString));
+  Assert.AreEqual('char literal', TokenKindToString(dtkCharLiteral));
+  Assert.AreEqual('''=''', TokenKindToString(dtkEquals));
+  Assert.AreEqual(''':''', TokenKindToString(dtkColon));
+  Assert.AreEqual('''.''', TokenKindToString(dtkDot));
+  Assert.AreEqual(''',''', TokenKindToString(dtkComma));
+  Assert.AreEqual('''+''', TokenKindToString(dtkPlus));
+  Assert.AreEqual('''-''', TokenKindToString(dtkMinus));
+  Assert.AreEqual('''[''', TokenKindToString(dtkLBracket));
+  Assert.AreEqual(''']''', TokenKindToString(dtkRBracket));
+  Assert.AreEqual('''(''', TokenKindToString(dtkLParen));
+  Assert.AreEqual(''')''', TokenKindToString(dtkRParen));
+  Assert.AreEqual('''<''', TokenKindToString(dtkLAngle));
+  Assert.AreEqual('''>''', TokenKindToString(dtkRAngle));
+  Assert.AreEqual('binary data', TokenKindToString(dtkBinaryData));
+  Assert.AreEqual('whitespace', TokenKindToString(dtkWhitespace));
+  Assert.AreEqual('end of line', TokenKindToString(dtkEOL));
+  Assert.AreEqual('end of file', TokenKindToString(dtkEOF));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TDfmLexerTests);
+  TDUnitX.RegisterTestFixture(TTokenKindToStringTests);
 
 end.

@@ -112,23 +112,23 @@ begin
   begin
     if FDiagnosticMode then
     begin
-      AddDiag(dsError, DiagUnexpectedEndOfInput, Format('Unexpected end of DFM input: expected token kind %d', [Ord(Kind)]), 0, 0);
+      AddDiag(dsError, DiagUnexpectedEndOfInput, Format('Unexpected end of DFM input: expected %s', [TokenKindToString(Kind)]), 0, 0);
       Result := False;
       Exit;
     end
     else
-      raise Exception.CreateFmt('Unexpected end of DFM input: expected token kind %d', [Ord(Kind)]);
+      raise Exception.CreateFmt('Unexpected end of DFM input: expected %s', [TokenKindToString(Kind)]);
   end;
   if CurrentKind <> Kind then
   begin
     if FDiagnosticMode then
     begin
-      AddDiag(dsError, DiagExpectedTokenNotFound, Format('Expected token kind %d but got %d at line %d col %d', [Ord(Kind), Ord(CurrentKind), Current.Line, Current.Col]), Current.Line, Current.Col);
+      AddDiag(dsError, DiagExpectedTokenNotFound, Format('Expected %s but got %s at line %d col %d', [TokenKindToString(Kind), TokenKindToString(CurrentKind), Current.Line, Current.Col]), Current.Line, Current.Col);
       Result := False;
       Exit;
     end
     else
-      raise Exception.CreateFmt('Expected token kind %d but got %d at line %d col %d', [Ord(Kind), Ord(CurrentKind), Current.Line, Current.Col]);
+      raise Exception.CreateFmt('Expected %s but got %s at line %d col %d', [TokenKindToString(Kind), TokenKindToString(CurrentKind), Current.Line, Current.Col]);
   end;
   Advance;
   Result := True;
@@ -137,9 +137,9 @@ end;
 procedure TDfmParser.Expect(Kind: TDfmTokenKind);
 begin
   if AtEnd then
-    raise Exception.CreateFmt('Unexpected end of DFM input: expected token kind %d', [Ord(Kind)]);
+    raise Exception.CreateFmt('Unexpected end of DFM input: expected %s', [TokenKindToString(Kind)]);
   if CurrentKind <> Kind then
-    raise Exception.CreateFmt('Expected token kind %d but got %d at line %d col %d', [Ord(Kind), Ord(CurrentKind), Current.Line, Current.Col]);
+    raise Exception.CreateFmt('Expected %s but got %s at line %d col %d', [TokenKindToString(Kind), TokenKindToString(CurrentKind), Current.Line, Current.Col]);
   Advance;
 end;
 
@@ -429,7 +429,7 @@ begin
     dtkBinaryData:
       Result := ParseBinaryValue;
   else
-    raise Exception.CreateFmt('Unexpected token kind %d at line %d col %d', [Ord(CurrentKind), Current.Line, Current.Col]);
+    raise Exception.CreateFmt('Unexpected token %s at line %d col %d', [TokenKindToString(CurrentKind), Current.Line, Current.Col]);
   end;
   Result.SourceStart := StartOfs;
   if Result.SourceEnd < 0 then

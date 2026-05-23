@@ -1284,6 +1284,7 @@ class function ParseFileWithDiagnostics(const FileName: string): TParseResult;
 ---
 Title: Human-readable token kind names in parser error messages
 Issue: #37
+Status: closed
 Labels: enhancement
 Body:
 Parser and diagnostic error messages currently emit raw ordinal values

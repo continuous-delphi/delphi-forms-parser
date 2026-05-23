@@ -4,6 +4,13 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.8
 
+### 0.8.43
+
+- Human-readable token kind names in parser error messages. Add
+  `TokenKindToString` to `Delphi.Forms.Token`. Parser errors now say
+  e.g. "Expected ':' but got identifier" instead of "Expected token kind 6
+  but got 0".
+[#37](https://github.com/continuous-delphi/delphi-forms-parser/issues/37)
 
 ## 0.7
 
