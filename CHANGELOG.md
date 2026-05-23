@@ -4,8 +4,14 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.3
 
+### 0.3.21
 
-## 0.2 - Unreleased
+- Add encoding detection for text DFM files. ParseBytes auto-detects UTF-8
+  BOM; defaults to UTF-8 for no-BOM files. New ParseFile/ParseBytes overloads
+  accept explicit TEncoding for legacy ANSI-encoded projects.
+[#21](https://github.com/continuous-delphi/delphi-forms-parser/issues/21)
+
+## 0.2
 
 - All code review items completed
 

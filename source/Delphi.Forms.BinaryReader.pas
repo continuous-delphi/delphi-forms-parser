@@ -11,6 +11,10 @@ uses
 
 type
 
+  // Reads TPF0 binary DFM format into a TFormFile AST.
+  // Requires a seekable stream (TBytesStream, TFileStream, TMemoryStream).
+  // The reader uses Position-based peek-and-rewind for list, collection,
+  // and child object termination checks.
   TDfmBinaryReader = class
   private
     FStream: TStream;

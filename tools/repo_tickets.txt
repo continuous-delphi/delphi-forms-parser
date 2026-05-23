@@ -587,3 +587,111 @@ cause crashes or incorrect behavior.
 - [ ] Each test case either produces correct output or raises a clear exception
 - [ ] No access violations or unhandled crashes
 - [ ] All existing tests still pass
+
+---
+Title: ParseBytes assumes UTF-8 for text DFMs -- corrupts ANSI-encoded files
+Issue: #21
+Status: closed
+Labels: bug
+Body:
+`TDelphiFormsParser.ParseBytes` in `Delphi.Forms.pas` line 74 unconditionally
+uses `TEncoding.UTF8.GetString(Data)` for text-format DFM files:
+
+```pascal
+Result := ParseText(TEncoding.UTF8.GetString(Data));
+```
+
+Legacy Delphi projects (pre-Unicode, Delphi 7 through 2007) produce
+ANSI-encoded text DFM files (Windows-1252/system codepage). Non-ASCII
+characters in string properties (e.g. `Caption = 'Cafe'` with accented e)
+are corrupted when decoded as UTF-8.
+
+Modern Delphi can also produce UTF-8 DFM files with a BOM prefix.
+
+## Scope
+
+- [ ] Detect UTF-8 BOM ($EF $BB $BF) and use `TEncoding.UTF8` when present
+- [ ] Fall back to `TEncoding.ANSI` (system codepage) when no BOM detected
+- [ ] Apply same logic in `ParseFile`
+- [ ] Add test for ANSI-encoded DFM with extended characters
+
+## Acceptance criteria
+
+- [ ] ANSI-encoded DFM files with non-ASCII characters parse correctly
+- [ ] UTF-8 DFM files with BOM parse correctly
+- [ ] UTF-8 DFM files without BOM parse correctly (ASCII subset)
+- [ ] All existing tests still pass
+
+---
+Title: Collection item class name detection ambiguous for edge cases
+Issue: #22
+Labels: bug
+Body:
+In `Delphi.Forms.Parser.pas` lines 428-444, the parser distinguishes
+between a class name and a property name after `item` by looking ahead:
+if the next identifier is followed by `=`, it's a property name; otherwise
+it's a class name.
+
+This works for well-formed DFM files from the Delphi IDE, but is ambiguous
+for malformed input:
+
+```
+item SomeWord
+end
+```
+
+The parser treats `SomeWord` as a class name, but it could be a malformed
+property without a value. This matches Delphi's own behavior (Delphi also
+treats the first identifier after `item` as a class name if no `=` follows),
+so it's correct for valid DFM files.
+
+However, the lookahead logic has a subtlety: after advancing past the
+potential class name and skipping trivia, if the stream hits EOF or a
+non-`=` token that isn't a property start, the code treats it as a class
+name without further validation.
+
+## Scope
+
+- [ ] Add a comment documenting the grammar ambiguity and design decision
+- [ ] Consider validating that the detected class name starts with 'T'
+  (Delphi convention) as a heuristic, or leave as-is with documentation
+
+## Acceptance criteria
+
+- [ ] Behavior documented in code comments
+- [ ] No regression in existing tests
+
+---
+Title: BinaryWriter WriteShortString silently truncates strings over 255 bytes
+Issue: #23
+Labels: bug
+Body:
+In `Delphi.Forms.BinaryWriter.pas` line 64, `WriteShortString` casts the
+ANSI byte length to `Byte` without validation:
+
+```pascal
+Buf := TEncoding.ANSI.GetBytes(S);
+WriteByte(Byte(Length(Buf)));  // truncates if > 255
+```
+
+If `Length(Buf) > 255`, the cast silently wraps (256 becomes 0, 257 becomes
+1, etc.). The written length won't match the actual data, corrupting the
+binary stream.
+
+This affects component names, class names, property names, identifier values,
+and set item names -- all of which use ShortString encoding in the TPF0
+format.
+
+In practice, Delphi component names rarely exceed 255 bytes, but property
+names like deeply qualified dotted names or very long identifier values
+could theoretically hit this.
+
+## Scope
+
+- [ ] Add validation: raise if `Length(Buf) > 255`
+- [ ] Add test verifying the exception
+
+## Acceptance criteria
+
+- [ ] WriteShortString raises a clear exception for strings > 255 bytes
+- [ ] All existing tests still pass

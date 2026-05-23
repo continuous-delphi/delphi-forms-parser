@@ -17,11 +17,15 @@ type
   TDfmFormat = (dfText, dfBinary);
 
   TDelphiFormsParser = class
+  private
+    class function DetectTextEncoding(const Data: TBytes): TEncoding;
   public
-    class function ParseFile(const FileName: string): TFormFile;
+    class function ParseFile(const FileName: string): TFormFile; overload;
+    class function ParseFile(const FileName: string; Encoding: TEncoding): TFormFile; overload;
     class function ParseText(const Source: string): TFormFile;
     class function ParseBinary(const Data: TBytes): TFormFile;
-    class function ParseBytes(const Data: TBytes): TFormFile;
+    class function ParseBytes(const Data: TBytes): TFormFile; overload;
+    class function ParseBytes(const Data: TBytes; Encoding: TEncoding): TFormFile; overload;
 
     class function WriteText(FormFile: TFormFile): string;
     class function WriteBinary(FormFile: TFormFile): TBytes;
@@ -58,6 +62,19 @@ begin
     Result := True;
 end;
 
+class function TDelphiFormsParser.DetectTextEncoding(const Data: TBytes): TEncoding;
+begin
+  // UTF-8 BOM: $EF $BB $BF
+  if (Length(Data) >= 3) and (Data[0] = $EF) and (Data[1] = $BB) and (Data[2] = $BF) then
+    Result := TEncoding.UTF8
+  // UTF-16 LE BOM: $FF $FE (unlikely for DFM but handle it)
+  else if (Length(Data) >= 2) and (Data[0] = $FF) and (Data[1] = $FE) then
+    Result := TEncoding.Unicode
+  // No BOM: default to UTF-8 (modern Delphi)
+  else
+    Result := TEncoding.UTF8;
+end;
+
 class function TDelphiFormsParser.ParseFile(const FileName: string): TFormFile;
 var
   Data: TBytes;
@@ -66,12 +83,48 @@ begin
   Result := ParseBytes(Data);
 end;
 
+class function TDelphiFormsParser.ParseFile(const FileName: string; Encoding: TEncoding): TFormFile;
+var
+  Data: TBytes;
+begin
+  Data := TFile.ReadAllBytes(FileName);
+  Result := ParseBytes(Data, Encoding);
+end;
+
 class function TDelphiFormsParser.ParseBytes(const Data: TBytes): TFormFile;
+var
+  Enc: TEncoding;
+  Preamble: TBytes;
+  Offset: Integer;
 begin
   if IsBinaryDfm(Data) then
     Result := ParseBinary(Data)
   else
-    Result := ParseText(TEncoding.UTF8.GetString(Data));
+  begin
+    Enc := DetectTextEncoding(Data);
+    Preamble := Enc.GetPreamble;
+    Offset := Length(Preamble);
+    // Verify BOM actually matches before skipping
+    if (Offset > 0) and (Length(Data) >= Offset) then
+    begin
+      var Match := True;
+      for var I := 0 to Offset - 1 do
+        if Data[I] <> Preamble[I] then begin Match := False; Break; end;
+      if not Match then
+        Offset := 0;
+    end
+    else
+      Offset := 0;
+    Result := ParseText(Enc.GetString(Data, Offset, Length(Data) - Offset));
+  end;
+end;
+
+class function TDelphiFormsParser.ParseBytes(const Data: TBytes; Encoding: TEncoding): TFormFile;
+begin
+  if IsBinaryDfm(Data) then
+    Result := ParseBinary(Data)
+  else
+    Result := ParseText(Encoding.GetString(Data));
 end;
 
 class function TDelphiFormsParser.ParseText(const Source: string): TFormFile;

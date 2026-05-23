@@ -5,6 +5,7 @@ interface
 uses
   DUnitX.TestFramework,
   System.SysUtils,
+  System.IOUtils,
   Delphi.Forms,
   Delphi.Forms.Types;
 
@@ -35,6 +36,12 @@ type
     procedure ParseBytes_AutoDetectsText;
     [Test]
     procedure ParseBytes_AutoDetectsBinary;
+    [Test]
+    procedure ParseBytes_UTF8WithBOM;
+    [Test]
+    procedure ParseBytes_ANSIExplicit;
+    [Test]
+    procedure ParseFile_EncodingOverload;
   end;
 
 implementation
@@ -237,6 +244,72 @@ begin
     Assert.AreEqual(Int64(42), F.Root.Properties[0].Value.IntValue);
   finally
     F.Free;
+  end;
+end;
+
+procedure TRoundTripTests.ParseBytes_UTF8WithBOM;
+var
+  Source: string;
+  Utf8Bytes: TBytes;
+  BomBytes: TBytes;
+  Data: TBytes;
+  F: TFormFile;
+begin
+  Source := 'object f: TF'#13#10'  Caption = ''Hello'''#13#10'end'#13#10;
+  Utf8Bytes := TEncoding.UTF8.GetBytes(Source);
+  // Prepend UTF-8 BOM
+  BomBytes := TBytes.Create($EF, $BB, $BF);
+  SetLength(Data, Length(BomBytes) + Length(Utf8Bytes));
+  Move(BomBytes[0], Data[0], Length(BomBytes));
+  Move(Utf8Bytes[0], Data[Length(BomBytes)], Length(Utf8Bytes));
+
+  F := TDelphiFormsParser.ParseBytes(Data);
+  try
+    Assert.IsNotNull(F.Root);
+    Assert.AreEqual('f', F.Root.Name);
+    Assert.AreEqual('Hello', F.Root.Properties[0].Value.StringValue);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TRoundTripTests.ParseBytes_ANSIExplicit;
+var
+  Source: string;
+  AnsiBytes: TBytes;
+  F: TFormFile;
+begin
+  Source := 'object f: TF'#13#10'  Caption = ''Test'''#13#10'end'#13#10;
+  AnsiBytes := TEncoding.ANSI.GetBytes(Source);
+
+  F := TDelphiFormsParser.ParseBytes(AnsiBytes, TEncoding.ANSI);
+  try
+    Assert.IsNotNull(F.Root);
+    Assert.AreEqual('Test', F.Root.Properties[0].Value.StringValue);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TRoundTripTests.ParseFile_EncodingOverload;
+var
+  TempFile: string;
+  Source: string;
+  F: TFormFile;
+begin
+  Source := 'object f: TF'#13#10'  Left = 0'#13#10'end'#13#10;
+  TempFile := TPath.GetTempFileName;
+  try
+    TFile.WriteAllBytes(TempFile, TEncoding.UTF8.GetBytes(Source));
+    F := TDelphiFormsParser.ParseFile(TempFile, TEncoding.UTF8);
+    try
+      Assert.AreEqual('f', F.Root.Name);
+      Assert.AreEqual(Int64(0), F.Root.Properties[0].Value.IntValue);
+    finally
+      F.Free;
+    end;
+  finally
+    TFile.Delete(TempFile);
   end;
 end;
 
