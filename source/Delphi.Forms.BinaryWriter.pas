@@ -61,6 +61,8 @@ var
   Buf: TBytes;
 begin
   Buf := TEncoding.ANSI.GetBytes(S);
+  if Length(Buf) > 255 then
+    raise Exception.CreateFmt('Short string exceeds 255 bytes (%d): %s', [Length(Buf), Copy(S, 1, 50)]);
   WriteByte(Byte(Length(Buf)));
   if Length(Buf) > 0 then
     FStream.WriteBuffer(Buf[0], Length(Buf));

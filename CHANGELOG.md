@@ -4,6 +4,12 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.3
 
+### 0.3.22
+
+- Fix BinaryWriter WriteShortString silently truncating strings > 255 bytes.
+  Now raises with descriptive message including the string length and preview.
+[#23](https://github.com/continuous-delphi/delphi-forms-parser/issues/23)
+
 ### 0.3.21
 
 - Add encoding detection for text DFM files. ParseBytes auto-detects UTF-8

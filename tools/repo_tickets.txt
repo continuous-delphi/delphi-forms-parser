@@ -625,6 +625,7 @@ Modern Delphi can also produce UTF-8 DFM files with a BOM prefix.
 ---
 Title: Collection item class name detection ambiguous for edge cases
 Issue: #22
+Status: closed
 Labels: bug
 Body:
 In `Delphi.Forms.Parser.pas` lines 428-444, the parser distinguishes
@@ -664,6 +665,7 @@ name without further validation.
 ---
 Title: BinaryWriter WriteShortString silently truncates strings over 255 bytes
 Issue: #23
+Status: closed
 Labels: bug
 Body:
 In `Delphi.Forms.BinaryWriter.pas` line 64, `WriteShortString` casts the

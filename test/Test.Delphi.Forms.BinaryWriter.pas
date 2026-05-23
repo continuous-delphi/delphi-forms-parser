@@ -78,6 +78,8 @@ type
     procedure RoundTrip_PreservesCollectionItemIndex;
     [Test]
     procedure Write_SequentialIndicesWhenNotSet;
+    [Test]
+    procedure Write_ShortStringOver255_Raises;
   end;
 
 implementation
@@ -814,6 +816,26 @@ begin
   finally
     F2.Free;
   end;
+end;
+
+procedure TDfmBinaryWriterTests.Write_ShortStringOver255_Raises;
+begin
+  Assert.WillRaise(
+    procedure
+    var
+      F: TFormFile;
+    begin
+      F := TFormFile.Create;
+      try
+        F.Root := TFormObject.Create;
+        F.Root.Name := StringOfChar('X', 256);
+        F.Root.ClassName_ := 'TF';
+        FWriter.WriteToBytes(F);
+      finally
+        F.Free;
+      end;
+    end,
+    Exception);
 end;
 
 procedure TDfmBinaryWriterTests.RoundTrip_PreservesExtendedTag;

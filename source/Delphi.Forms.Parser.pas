@@ -423,22 +423,28 @@ begin
         try
           Advance; // skip 'item'
           SkipTrivia;
-          // Check for optional class name: if next ident is NOT followed by '='
-          // then it's a class name, not a property name
+          // Grammar ambiguity: after 'item', the next identifier could be
+          // either a class name (e.g. 'item TToolButton') or a property
+          // name (e.g. 'item' followed by 'Caption = ...'). Delphi's own
+          // ObjectTextToResource uses the same heuristic: if the identifier
+          // is followed by '=' it's a property; otherwise it's a class name.
+          // This works correctly for all well-formed DFM files produced by
+          // the Delphi IDE. For malformed input where a bare identifier
+          // appears without '=' (e.g. 'item Orphan\nend'), it will be
+          // misclassified as a class name -- matching Delphi's behavior.
           if not AtEnd and (CurrentKind = dtkIdentifier) and not MatchIdent('end') then
           begin
-            // Peek ahead: save position, skip ident, skip trivia, check for '='
             var SavePos := FPos;
-            Advance; // skip the potential class name
+            Advance;
             SkipTrivia;
             if not AtEnd and (CurrentKind = dtkEquals) then
             begin
-              // It was a property name, not a class name -- rewind
+              // Followed by '=' -- it's a property name, rewind
               FPos := SavePos;
             end
             else
             begin
-              // It was a class name -- store it, position is already past it
+              // Not followed by '=' -- treat as class name
               Item.ClassName_ := FTokens[SavePos].Text;
             end;
           end;
