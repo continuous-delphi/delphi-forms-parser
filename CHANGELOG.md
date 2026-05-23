@@ -2,7 +2,12 @@
 Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 
 ---
+## 0.4
+
+
 ## 0.3
+
+- Second/alternative code review items completed
 
 ### 0.3.22
 
