@@ -4,6 +4,13 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 ## 0.6
 
+### 0.6.36
+
+- Extract statistics computation to `Delphi.Forms.Statistics.pas` library unit.
+  `TFormStatistics` record with `ComputeStatistics` (single + batch overloads)
+  and `ToJSON`. FormStats CLI migrated to call library.
+[#33](https://github.com/continuous-delphi/delphi-forms-parser/issues/33)
+
 ### 0.6.35
 
 - Add `TFormJsonOptions` set to `Delphi.Forms.JSON`: `joIncludeValues`,

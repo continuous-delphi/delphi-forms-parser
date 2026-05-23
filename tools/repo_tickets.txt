@@ -1040,6 +1040,7 @@ Parallels the existing pattern: `TextWriter` = AST to text DFM,
 ---
 Title: Extract statistics computation to Delphi.Forms.Statistics library unit
 Issue: #33
+Status: closed
 Labels: enhancement
 Body:
 FormStats computes component/property statistics inline in its Main unit.
