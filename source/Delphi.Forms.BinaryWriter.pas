@@ -209,17 +209,10 @@ begin
     end;
     vaExtended:
     begin
+      if Length(Value.ExtendedRawBytes) <> 10 then
+        raise Exception.Create('Cannot write vaExtended: ExtendedRawBytes not set (requires 10 bytes)');
       WriteByte(vaExtended);
-      if Length(Value.ExtendedRawBytes) = 10 then
-        FStream.WriteBuffer(Value.ExtendedRawBytes[0], 10)
-      else
-      begin
-        // Fallback: write as double in 10-byte extended slot
-        D := Value.FloatValue;
-        FStream.WriteBuffer(D, 8);
-        WriteByte(0);
-        WriteByte(0);
-      end;
+      FStream.WriteBuffer(Value.ExtendedRawBytes[0], 10);
     end;
     vaCurrency:
     begin

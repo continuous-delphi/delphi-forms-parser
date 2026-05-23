@@ -4,6 +4,12 @@ Home repo: https://github.com/continuous-delphi/delphi-forms-parser
 ---
 
 
+### 0.2.17
+
+- Fix binary writer vaExtended fallback: raise clear exception instead of
+  writing invalid 80-bit layout when ExtendedRawBytes is not set.
+[#19](https://github.com/continuous-delphi/delphi-forms-parser/issues/19)
+
 ### 0.2.16
 
 - Preserve binary collection item indices for round-trip. Reader stores

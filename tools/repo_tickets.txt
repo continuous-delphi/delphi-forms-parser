@@ -528,6 +528,7 @@ binary round-trip produces different bytes.
 ---
 Title: Binary extended float fallback writes incorrect 80-bit layout
 Issue: #19
+Status: closed
 Labels: bug
 Body:
 In `Delphi.Forms.BinaryWriter.pas` lines 216-221, the fallback path for
