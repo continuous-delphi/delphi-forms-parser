@@ -38,28 +38,31 @@ and child components.
 
 ### 2.1 Class Name Length Byte
 
-The first byte encodes both the class name length and object kind flags
-in the high nibble:
+The first byte encodes both the class name length and optional object kind
+flags using context-dependent interpretation:
 
 ```
   7  6  5  4  3  2  1  0
- [-- flags --][-- len --]
+ [bits 4-7   ][bits 0-3   ]
+  high nibble  low nibble
 ```
 
-| High nibble | Object kind |
-|-------------|-------------|
-| `$00` | `object` (normal) |
-| `$10` | `inherited` |
-| `$20` | `inline` |
+| Byte range | High nibble | Interpretation |
+|------------|-------------|----------------|
+| `$00` | `$0` | End-of-children terminator (see Section 2.5) |
+| `$01`-`$0F` | `$0` | Normal object, class name length = byte value (1-15) |
+| `$10`-`$1F` | `$1` | Inherited object, class name length = low nibble (0-15) |
+| `$20`-`$2F` | `$2` | Inline object, class name length = low nibble (0-15) |
+| `$30`-`$FF` | `$3`-`$F` | Normal object, class name length = low nibble (0-15) |
 
-The low nibble (bits 3..0) gives the class name length in bytes. This
-limits binary class names to 15 characters when flags are present, though
-in practice Delphi class names this short are rare and the IDE may use a
-different encoding for longer names with flags.
+When the high nibble is non-zero, the reader extracts object kind flags
+from the high nibble and masks the byte to the low nibble for the class
+name length. Only `$10` (inherited) and `$20` (inline) are defined flag
+values; all other non-zero high nibbles are treated as normal objects.
 
-**Note:** When the high nibble is `$00` (normal object), the full byte is
-the class name length, supporting names up to 255 characters. The flag
-bits only consume the high nibble when non-zero.
+This limits class names to 15 bytes for all objects. In practice, this is
+not a constraint -- standard VCL and FMX class names are well under this
+limit (e.g., `TButton` = 7 bytes, `TActionList` = 11 bytes).
 
 ### 2.2 Class Name
 
@@ -136,18 +139,21 @@ in multiple contexts (properties, children, sets).
 ### 4.2 Long String (vaString, vaLString)
 
 `vaString` uses a 1-byte length prefix (like a short string) but appears
-as a property value. `vaLString` uses a 4-byte (Int32) length prefix.
-Both are ANSI-encoded.
+as a property value. `vaLString` uses a 4-byte length prefix (signed
+32-bit integer). Both are ANSI-encoded.
 
 ### 4.3 Wide String (vaWString, vaUString)
 
-4-byte (Int32) length prefix giving the number of *characters* (not
-bytes). Data is `Length * 2` bytes, UTF-16LE encoded.
+4-byte length prefix (signed 32-bit integer) giving the number of
+*characters* (not bytes). Data is `Length * 2` bytes, UTF-16LE encoded.
 
 ### 4.4 UTF-8 String (vaUTF8String)
 
-4-byte (Int32) length prefix giving the number of *bytes*. Data is
-UTF-8 encoded. This is the default string type in modern Delphi (2009+).
+4-byte length prefix (signed 32-bit integer) giving the number of *bytes*. Data is
+UTF-8 encoded. The Delphi streaming system (`TWriter`) typically selects
+this encoding for string properties containing non-ASCII Unicode
+characters, as it is more compact than `vaUString`/`vaWString` for most
+text.
 
 ---
 
@@ -156,30 +162,30 @@ UTF-8 encoded. This is the default string type in modern Delphi (2009+).
 Every property value begins with a 1-byte type tag. The following table
 lists all 22 value types.
 
-| Tag | Hex | Name | Payload | Description |
-|-----|-----|------|---------|-------------|
+| Tag | Hex | Name | Size / Format | Description |
+|-----|-----|------|---------------|-------------|
 | 1 | `$01` | vaList | values + `$00` | Ordered list of values |
-| 2 | `$02` | vaInt8 | 1 byte | Signed 8-bit integer (-128..127) |
+| 2 | `$02` | vaInt8 | 1 byte | Signed 8-bit integer |
 | 3 | `$03` | vaInt16 | 2 bytes | Signed 16-bit integer (little-endian) |
 | 4 | `$04` | vaInt32 | 4 bytes | Signed 32-bit integer (little-endian) |
 | 5 | `$05` | vaExtended | 10 bytes | 80-bit extended precision float |
 | 6 | `$06` | vaString | 1-byte len + data | ANSI short string |
-| 7 | `$07` | vaIdent | short string | Identifier / enumeration value |
-| 8 | `$08` | vaFalse | (none) | Boolean False |
-| 9 | `$09` | vaTrue | (none) | Boolean True |
-| 10 | `$0A` | vaBinary | Int32 len + data | Raw binary blob |
-| 11 | `$0B` | vaSet | short strings + `$00` | Set of identifiers |
-| 12 | `$0C` | vaLString | Int32 len + data | ANSI long string |
-| 13 | `$0D` | vaNil | (none) | Nil reference |
+| 7 | `$07` | vaIdent | 1-byte len + data | Identifier / enumeration value |
+| 8 | `$08` | vaFalse | 0 bytes | Boolean False |
+| 9 | `$09` | vaTrue | 0 bytes | Boolean True |
+| 10 | `$0A` | vaBinary | 4-byte len + data | Raw binary blob |
+| 11 | `$0B` | vaSet | 1-byte len strings + `$00` | Set of identifiers |
+| 12 | `$0C` | vaLString | 4-byte len + data | ANSI long string |
+| 13 | `$0D` | vaNil | 0 bytes | Nil reference |
 | 14 | `$0E` | vaCollection | items + `$00` | Collection of item objects |
 | 15 | `$0F` | vaSingle | 4 bytes | IEEE 754 single-precision float |
 | 16 | `$10` | vaDouble | 8 bytes | IEEE 754 double-precision float |
-| 17 | `$11` | vaCurrency | 8 bytes | Delphi Currency (Int64 / 10000) |
+| 17 | `$11` | vaCurrency | 8 bytes | Signed 64-bit integer / 10000 |
 | 18 | `$12` | vaDate | 8 bytes | TDateTime as IEEE 754 double |
-| 19 | `$13` | vaWString | Int32 charcount + UTF-16LE | Wide string |
+| 19 | `$13` | vaWString | 4-byte charcount + data | UTF-16LE wide string |
 | 20 | `$14` | vaInt64 | 8 bytes | Signed 64-bit integer (little-endian) |
-| 21 | `$15` | vaUTF8String | Int32 bytelen + UTF-8 | UTF-8 string |
-| 22 | `$16` | vaUString | Int32 charcount + UTF-16LE | Unicode string |
+| 21 | `$15` | vaUTF8String | 4-byte bytelen + data | UTF-8 string |
+| 22 | `$16` | vaUString | 4-byte charcount + data | UTF-16LE Unicode string |
 
 ### 5.1 Integer Values (vaInt8, vaInt16, vaInt32, vaInt64)
 
@@ -220,10 +226,10 @@ See Section 4 for encoding details. Summary of length prefix formats:
 | Type | Length prefix | Encoding | Length unit |
 |------|-------------|----------|------------|
 | vaString | 1 byte | ANSI | bytes |
-| vaLString | Int32 | ANSI | bytes |
-| vaWString | Int32 | UTF-16LE | characters |
-| vaUTF8String | Int32 | UTF-8 | bytes |
-| vaUString | Int32 | UTF-16LE | characters |
+| vaLString | 4 bytes | ANSI | bytes |
+| vaWString | 4 bytes | UTF-16LE | characters |
+| vaUTF8String | 4 bytes | UTF-8 | bytes |
+| vaUString | 4 bytes | UTF-16LE | characters |
 
 ### 5.4 Boolean Values (vaFalse, vaTrue)
 
@@ -254,11 +260,14 @@ string (length byte `$00`). Represents a Delphi set value.
 Example: `[akLeft, akTop, akRight]` encodes as three short strings
 (`akLeft`, `akTop`, `akRight`) followed by `$00`.
 
+An empty set is encoded as the `vaSet` tag (`$0B`) followed immediately
+by the terminator (`$00`).
+
 ### 5.8 Binary Data (vaBinary)
 
 ```
 [$0A]                       vaBinary tag
-[Int32]                     byte count (little-endian)
+[4 bytes]                   byte count (little-endian, signed 32-bit)
 [Data]                      raw bytes
 ```
 
@@ -317,6 +326,10 @@ indices; explicit indices are rare).
 The root object is typically the form or data module itself. Its children
 are the components placed on the form.
 
+A valid TPF0 stream contains exactly one root object. Streams with
+multiple consecutive root objects or trailing data after the root object
+are malformed.
+
 ---
 
 ## 7. Historical Notes
@@ -331,11 +344,37 @@ are the components placed on the form.
 - `vaUTF8String` ($15) appeared in Delphi 2009 with the Unicode transition.
 - `vaUString` ($16) was added for `UnicodeString` (distinct from
   `WideString` in reference counting semantics, though the binary
-  encoding is identical to `vaWString`).
+  encoding is identical to `vaWString`). Parsers can treat `vaUString`
+  and `vaWString` identically during deserialization.
+
+The format contains no version field. Compatibility is maintained by
+design: new value type tags are added but existing tags are never
+modified. Parsers should reject unknown value type tags with a clear
+error, as encountering one likely indicates a corrupt stream rather than
+a future format extension.
 
 ---
 
-## 8. References
+## 8. Example
+
+Complete hex dump of a minimal `TButton` with no properties or children:
+
+```
+FF 54 50 46 30              Signature ($FF + "TPF0")
+07                          Class name length = 7, normal object
+54 42 75 74 74 6F 6E        "TButton" (ASCII)
+07                          Name length = 7
+42 75 74 74 6F 6E 31        "Button1" (ASCII)
+00                          End of properties
+00                          End of children
+```
+
+Total: 19 bytes. This is the smallest valid binary DFM stream using the
+standard signature variant.
+
+---
+
+## 9. References
 
 - Embarcadero `System.Classes.pas` -- `TReader` / `TWriter` source code
   (the authoritative implementation).
